@@ -1,0 +1,88 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit, fopen, fclose, fscanf, printf               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import fopen msvcrt.dll
+    11                                  import fclose msvcrt.dll
+    12                                  import fscanf msvcrt.dll
+    13                                  import printf msvcrt.dll
+    14                                  ; our data is declared here (the variables needed by our program)
+    15                                  segment data use32 class=data
+    16                                      ; ...
+    17 00000000 70616C696E64726F6D-         file_name db 'palindrom.txt', 0
+    17 00000009 2E74787400         
+    18 0000000E 7200                        access_mode db 'r', 0
+    19 00000010 256400                      format db '%d', 0
+    20 00000013 25642000                    format_space db '%d ', 0
+    21 00000017 FFFFFFFF                    handle dd -1
+    22 0000001B 00000000                    number dd 0
+    23 0000001F 00000000                    saveNumber dd 0
+    24 00000023 0000                        inverse dw 0
+    25                                  ; our code starts here
+    26                                  segment code use32 class=code
+    27                                      start:
+    28                                          ; ...
+    29 00000000 68[0E000000]                    push dword access_mode
+    30 00000005 68[00000000]                    push dword file_name
+    31 0000000A FF15[00000000]                  call [fopen]
+    32                                          
+    33 00000010 83C408                          add esp, 4*2
+    34                                          
+    35 00000013 A3[17000000]                    mov [handle], eax
+    36 00000018 83F800                          cmp eax, 0
+    37 0000001B 0F8487000000                    je theend
+    38                                          
+    39                                          repeat:
+    40 00000021 68[1B000000]                    push dword number
+    41 00000026 68[10000000]                    push dword format
+    42 0000002B FF35[17000000]                  push dword [handle]
+    43 00000031 FF15[00000000]                  call [fscanf]
+    44 00000037 83C40C                          add esp, 4*3
+    45                                          
+    46 0000003A 83F8FF                          cmp eax, -1
+    47 0000003D 7469                            je EOF
+    48                                          
+    49 0000003F 66C705[23000000]00-             mov word [inverse], 0
+    49 00000047 00                 
+    50 00000048 A1[1B000000]                    mov eax, [number]
+    51 0000004D A3[1F000000]                    mov [saveNumber], eax
+    52                                          
+    53                                          repeat1:
+    54 00000052 66A1[1B000000]                  mov ax, word [number]
+    55 00000058 6683F800                        cmp ax, 0
+    56 0000005C 7425                            je outofrepeat1
+    57 0000005E B10A                            mov cl, 10
+    58 00000060 F6F1                            div cl
+    59 00000062 88E7                            mov bh, ah
+    60 00000064 B400                            mov ah, 0
+    61 00000066 66A3[1B000000]                  mov word[number], ax
+    62 0000006C 66A1[23000000]                  mov ax, [inverse]
+    63 00000072 B10A                            mov cl, 10
+    64 00000074 F6E1                            mul cl
+    65 00000076 00F8                            add al, bh
+    66 00000078 80D400                          adc ah, 0
+    67 0000007B 66A3[23000000]                  mov [inverse], ax
+    68 00000081 EBCF                            jmp repeat1
+    69                                          outofrepeat1:
+    70                                          
+    71 00000083 66A1[23000000]                  mov ax, [inverse]
+    72 00000089 663B05[1F000000]                cmp ax, word[saveNumber]
+    73 00000090 758F                            jne repeat
+    74 00000092 FF35[1F000000]                      push dword [saveNumber]
+    75 00000098 68[13000000]                        push dword format_space
+    76 0000009D FF15[00000000]                      call [printf]
+    77 000000A3 E979FFFFFF                      jmp repeat
+    78                                          
+    79                                          EOF:
+    80                                          
+    81                                          theend:
+    82 000000A8 FF35[17000000]                  push dword [handle]
+    83 000000AE FF15[00000000]                  call [fclose]
+    84                                          ; exit(0)
+    85 000000B4 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    86 000000B6 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

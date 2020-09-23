@@ -1,0 +1,104 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit, fopen, fclose, fscanf, printf               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import fopen msvcrt.dll
+    11                                  import fclose msvcrt.dll
+    12                                  import fscanf msvcrt.dll
+    13                                  import printf msvcrt.dll
+    14                                                            
+    15                                                            
+    16                                  ; our data is declared here (the variables needed by our program)
+    17                                  segment data use32 class=data
+    18                                      ; ...
+    19 00000000 66696C652E74787400          file_name db 'file.txt', 0
+    20 00000009 7200                        access_mode db 'r', 0
+    21 0000000B FFFFFFFF                    handle dd -1
+    22 0000000F 00000000                    number dd 0
+    23 00000013 256400                      format_number db '%d', 0
+    24 00000016 00000000                    count dd 0
+    25 0000001A 25642000                    format db '%d ', 0
+    26 0000001E 00<rept>                    sequence times 100 db 0
+    27                                  ; our code starts here
+    28                                  segment code use32 class=code
+    29                                      start:
+    30                                          ; ...
+    31                                              ;fopen(file_name, access_mode)
+    32 00000000 68[09000000]                        push dword access_mode
+    33 00000005 68[00000000]                        push dword file_name
+    34 0000000A FF15[00000000]                      call [fopen]
+    35 00000010 83C408                              add esp, 4*2
+    36                                             
+    37 00000013 A3[0B000000]                        mov dword [handle], eax
+    38 00000018 83F800                              cmp eax, 0
+    39 0000001B 0F848D000000                        je theend
+    40                                             
+    41 00000021 BF[1E000000]                       mov edi, sequence
+    42                                              ;fscanf(file_handle, format, atributes)
+    43                                              repeat:
+    44 00000026 68[0F000000]                            push dword number
+    45 0000002B 68[13000000]                            push dword format_number
+    46 00000030 FF35[0B000000]                          push dword [handle]
+    47 00000036 FF15[00000000]                          call [fscanf]
+    48 0000003C 83C40C                                  add esp, 4*3
+    49                                                  
+    50 0000003F 83F8FF                                  cmp eax, -1
+    51 00000042 740E                                    je EOF
+    52                                                  
+    53 00000044 FE05[16000000]                          inc byte [count]
+    54 0000004A A1[0F000000]                            mov eax, dword [number]
+    55 0000004F AB                                      stosd
+    56                                                  
+    57 00000050 EBD4                                jmp repeat
+    58                                  
+    59                                              EOF:
+    60 00000052 66BA0100                            mov dx, 1
+    61                                              repeat1:
+    62 00000056 6683FA00                                cmp dx, 0
+    63 0000005A 742C                                    je print_sequence
+    64                                                  
+    65 0000005C 66BA0000                                mov dx, 0
+    66 00000060 BE[1E000000]                            mov esi, sequence
+    67 00000065 8B0D[16000000]                          mov ecx, dword [count]
+    68 0000006B 83E901                                  sub ecx, 1
+    69                                                  repeat2:
+    70 0000006E 8B06                                    mov eax, dword [esi]
+    71 00000070 3B4604                                  cmp eax, dword [esi+4]; compare sequence[i] and sequence[i+1]
+    72 00000073 7E0C                                    jle next
+    73 00000075 8B5E04                                      mov ebx, dword [esi+4]
+    74 00000078 894604                                      mov dword [esi+4], eax
+    75 0000007B 891E                                        mov dword [esi], ebx
+    76 0000007D 66BA0100                                    mov dx, 1
+    77                                                  next:
+    78 00000081 83C604                                  add esi, 4
+    79 00000084 E2E8                                    loop repeat2
+    80 00000086 EBCE                                jmp repeat1
+    81                                              
+    82                                              print_sequence:
+    83 00000088 BE[1E000000]                        mov esi, sequence
+    84                                              repeat3:
+    85 0000008D 833D[16000000]00                        cmp dword [count], 0
+    86 00000094 7418                                    je theend
+    87                                                  
+    88 00000096 AD                                      lodsd
+    89 00000097 50                                      push eax
+    90 00000098 68[1A000000]                            push dword format
+    91 0000009D FF15[00000000]                          call [printf]
+    92 000000A3 83C408                                  add esp, 4*2
+    93                                                  
+    94 000000A6 FF0D[16000000]                          dec dword [count]
+    95                                                  
+    96 000000AC EBDF                                jmp repeat3
+    97                                              
+    98                                              theend:
+    99 000000AE FF35[0B000000]                      push dword [handle]
+   100 000000B4 FF15[00000000]                      call [fclose]
+   101 000000BA 83C404                              add esp, 4
+   102                                          ; exit(0)
+   103 000000BD 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+   104 000000BF FF15[00000000]                  call    [exit]       ; call exit to terminate the program

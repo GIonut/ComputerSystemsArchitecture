@@ -1,0 +1,19 @@
+     1                                  bits 32
+     2                                  global sumOfDigits
+     3                                  
+     4                                  segment code use 32 class = code public
+     5                                      sumOfDigits:
+     6 00000000 668B542404                      mov dx, [esp+4]
+     7 00000005 668B442406                      mov ax, [esp+6]
+     8 0000000A 66B90A00                        mov cx, 10
+     9 0000000E 66BB0000                        mov bx, 0
+    10                                          .repeat:
+    11 00000012 6683F800                            cmp ax, 0
+    12 00000016 740C                                je .outOfLoop
+    13 00000018 66F7F1                              div cx
+    14 0000001B 6601D3                              add bx, dx
+    15 0000001E 66BA0000                            mov dx, 0
+    16 00000022 EBEE                            jmp .repeat
+    17                                          .outOfLoop:
+    18                                          
+    19 00000024 C20400                          ret 4

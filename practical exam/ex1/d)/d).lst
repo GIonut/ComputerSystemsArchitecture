@@ -1,0 +1,110 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit, fopen, fclose, fscanf, printf               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import fopen msvcrt.dll
+    11                                  import fclose msvcrt.dll
+    12                                  import fclose msvcrt.dll
+    13                                  import fscanf msvcrt.dll
+    14                                  import printf msvcrt.dll
+    15                                  ; our data is declared here (the variables needed by our program)
+    16                                  segment data use32 class=data
+    17                                      ; ...
+    18 00000000 66696C652E74787400          file_name db 'file.txt', 0
+    19 00000009 7200                        access_mode db 'r', 0
+    20 0000000B FFFFFFFF                    handle dd -1
+    21 0000000F 00000000                    number dd 0
+    22 00000013 256400                      format_number db '%d', 0
+    23 00000016 25642000                    format db '%d ', 0
+    24 0000001A 00<rept>                    sequence times 100 db 0
+    25 0000007E [1A000000]                  start_pos dd sequence
+    26 00000082 00000000                    maxstart dd 0
+    27 00000086 00000000                    len dd 0
+    28 0000008A 00000000                    maxlen dd 0
+    29                                  ; our code starts here
+    30                                  segment code use32 class=code
+    31                                      start:
+    32                                          ; ...
+    33                                          ; fopen(file_name, access_mode)
+    34 00000000 68[09000000]                    push dword access_mode
+    35 00000005 68[00000000]                    push dword file_name
+    36 0000000A FF15[00000000]                  call [fopen]
+    37 00000010 83C408                          add esp, 4*2
+    38                                          
+    39 00000013 A3[0B000000]                    mov [handle], eax
+    40 00000018 83F800                          cmp eax, 0
+    41 0000001B 0F84B4000000                    je theend
+    42                                          
+    43 00000021 BF[1A000000]                    mov edi, sequence
+    44                                          repeat:
+    45                                          ;fscanf(handle, format, atributes)
+    46 00000026 68[0F000000]                    push dword number
+    47 0000002B 68[13000000]                    push dword format_number
+    48 00000030 FF35[0B000000]                  push dword [handle]
+    49 00000036 FF15[00000000]                  call [fscanf]
+    50 0000003C 83C40C                          add esp, 4*3
+    51                                          
+    52 0000003F 83F8FF                          cmp eax, -1
+    53 00000042 744C                            je EOF
+    54                                          
+    55 00000044 F705[0F000000]0100-             test dword [number], 1
+    55 0000004C 0000               
+    56 0000004E 7431                            je it_is_even
+    57                                              ;it_is_odd
+    58 00000050 A1[86000000]                        mov eax, dword [len]
+    59 00000055 3905[8A000000]                      cmp dword [maxlen],eax ;  check if the length of a sequence is bigger than the max sequence
+    60 0000005B 7D2B                                jge continue
+    61 0000005D A3[8A000000]                            mov [maxlen], eax ; if so, we save it as the maximum sequence
+    62 00000062 89F8                                    mov eax, edi
+    63 00000064 2B05[86000000]                          sub eax, dword [len]
+    64 0000006A A3[82000000]                            mov dword [maxstart], eax ; we save the starting point of the maximum sequence
+    65                                                  
+    66 0000006F 893D[7E000000]                          mov dword [start_pos], edi; and return to the adress of the current number, which is odd
+    67 00000075 C705[86000000]0000-                     mov dword [len], 0 ; looking for another sequence of even numbers, and start with len = 0
+    67 0000007D 0000               
+    68 0000007F EB07                                    jmp continue
+    69                                          it_is_even:
+    70 00000081 8305[86000000]04                    add dword [len], 4 ; if the number is even we increase the length of a sequence with the length of a doubleword
+    71                                              continue:
+    72 00000088 A1[0F000000]                        mov eax, dword[number] ; finaly we copy the sequence of numbers from the file into the memory
+    73 0000008D AB                                  stosd
+    74 0000008E EB96                            jmp repeat
+    75                                          EOF:
+    76                                          
+    77 00000090 A1[86000000]                        mov eax, dword [len]
+    78 00000095 3905[8A000000]                      cmp dword [maxlen],eax ;  check if the length of a sequence is bigger than the max sequence
+    79 0000009B 7D12                                jge continue1
+    80 0000009D A3[8A000000]                            mov [maxlen], eax ; if so, we save it as the maximum sequence
+    81 000000A2 89F8                                    mov eax, edi
+    82 000000A4 2B05[86000000]                          sub eax, dword [len]
+    83 000000AA A3[82000000]                            mov dword [maxstart], eax ; we save the starting point of the maximum sequence
+    84                                          continue1:
+    85                                          
+    86                                          
+    87                                          
+    88                                          
+    89 000000AF 8B35[82000000]                  mov esi, [maxstart]
+    90                                          repeat1:
+    91 000000B5 AD                                  lodsd
+    92 000000B6 50                                  push dword eax
+    93 000000B7 68[16000000]                        push dword format
+    94 000000BC FF15[00000000]                      call [printf]
+    95 000000C2 83C408                              add esp, 4*2
+    96                                              
+    97 000000C5 832D[8A000000]04                    sub dword [maxlen], 4
+    98                                              ;add dword [maxstart], 4
+    99                                              
+   100 000000CC 833D[8A000000]00                cmp dword [maxlen], 0
+   101 000000D3 75E0                            jne repeat1
+   102                                          theend:
+   103                                          
+   104 000000D5 FF35[0B000000]                  push dword [handle]
+   105 000000DB FF15[00000000]                  call [fclose]
+   106                                          ; exit(0)
+   107 000000E1 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+   108 000000E3 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

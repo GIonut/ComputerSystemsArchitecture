@@ -1,0 +1,53 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                   ;Exercice 1
+     6                                   ; a, b - words; c- dword
+     7                                   ;the bits 0-4 of C are the same as the bits 11-15 of A
+     8                                   ;the bits 5-11 of C have the value 1
+     9                                   ;the bits 12-15 of C are the same as the bits 8-11 of B
+    10                                   ;the bits 16-31 of C are the same as the bits of A
+    11                                  ; declare external functions needed by our program
+    12                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+    13                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+    14                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    15                                  
+    16                                  ; our data is declared here (the variables needed by our program)
+    17                                  segment data use32 class=data
+    18                                      ; ...
+    19 00000000 5291                        a dw 1001000101010010b ;9152h
+    20 00000002 AAD2                        b dw 1101001010101010b ;D2AAh
+    21 00000004 00000000                    c dd 00000000h
+    22                                  ; our code starts here
+    23                                  segment code use32 class=code
+    24                                      start:
+    25                                          ; ...
+    26 00000000 668B1D[00000000]                mov bx, [a] ; bx := 9152h = 1001000101010010b and
+    27 00000007 6681E300F8                      and bx, 1111100000000000b ; 1111100000000000b
+    28                                                               ;bx := 1001000000000000b := 9000h
+    29 0000000C B10B                            mov cl, 11
+    30 0000000E 66D3CB                          ror bx, cl; bx := 0000000000010010b := 12h
+    31                                          
+    32 00000011 66B80000                        mov ax, 0;
+    33 00000015 6609D8                          or ax, bx; ax := 0000000000010010b := 12h
+    34                                          
+    35 00000018 660DE00F                        or ax, 00111111100000b; ax := 0000111111110010b := 0FF2h
+    36                                          
+    37 0000001C 668B1D[02000000]                mov bx, [b];        bx := 1101001010101010b := D2AAh
+    38 00000023 6681E3000F                      and bx, 0000111100000000b;0000111100000000b
+    39                                                             ;bx := 0000001000000000b := 0200h
+    40 00000028 B104                            mov cl, 4
+    41 0000002A 66D3C3                          rol bx, cl ; bx := 0010000000000000b := 2000h
+    42 0000002D 6609D8                          or ax, bx; ax := 0010111111110010b := 2FF2h
+    43                                          
+    44 00000030 668B15[00000000]                mov dx, [a]; dx := 1001000101010010b := 9152h
+    45 00000037 6652                            push dx;
+    46 00000039 6650                            push ax;
+    47 0000003B 58                              pop eax; conversie fara semn de la ax la eax := 91522FF2h
+    48                                          
+    49 0000003C A3[04000000]                    mov [c], eax
+    50                                          
+    51                                          ; exit(0)
+    52 00000041 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    53 00000043 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

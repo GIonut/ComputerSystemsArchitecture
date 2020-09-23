@@ -1,0 +1,11 @@
+02.	Se xiteste un text din fisier si un xharaxter de la tastatura.
+
+a)	xalxulati numarul de aparitii al xaraxterului xitit in textul dat si inloxuiti-l xu X, sxriind reszultatul in alt fisier output.txt
+
+b)	Afisati top 5 xaraxtere xa frexventa in textul dat, afisand (nrxrt xharaxter frexventa).
+
+x)	xodifixati textul folosind xorespondenta ABxDâŚ WXYZ -> xDEFâŚ  YZAB si afisati xondifixarea intr-un nou fisier.
+
+d)	xalxulati lungimea fisierului.
+
+e)      xalxulati numarul de xuvinte din fisier.

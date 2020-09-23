@@ -1,0 +1,71 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  ;Exercice 30
+     6                                  ;given the word A, obtain the doubleword B as follows:
+     7                                  ;the bits 0-3 of B are the same as the bits 1-4 of the result A XOR 0Ah
+     8                                  ;the bits 4-11 of B are the same as the bits 7-14 of A
+     9                                  ;the bits 12-19 of B have the value 0
+    10                                  ;the bits 20-25 of B have the value 1
+    11                                  ;the bits 26-31 of C are the same as the bits 3-8 of A complemented
+    12                                  
+    13                                  ; declare external functions needed by our program
+    14                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+    15                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+    16                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    17                                  
+    18                                  ; our data is declared here (the variables needed by our program)
+    19                                  segment data use32 class=data
+    20                                      ; ...
+    21 00000000 569A                        A dw 1001101001010110b ; 9A56
+    22 00000002 00000000                    B dd 00000000000000000000000000000000b
+    23                                  ; our code starts here
+    24                                  segment code use32 class=code
+    25                                      start:
+    26                                          ; ...
+    27                                      ;the bits 0-3 of B are the same as the bits 1-4 of the result A XOR 0Ah    
+    28 00000000 66A1[00000000]                  MOV AX, [A];  1001101001010110b xor
+    29 00000006 6683F00A                        XOR AX, 0AH;0000000000001010b
+    30                                                     ;1001101001011100b= 9A5Ch
+    31 0000000A 6683E01E                        AND AX, 0000000000011110B; ax := 0000000000011100b := 001Ch
+    32 0000000E 66D1E8                          SHR AX, 1; ax := 0000000000001110b : 000Eh
+    33                                          
+    34 00000011 66BB0000                        MOV BX, 0
+    35 00000015 6609C3                          OR BX, AX; bx := 0000000000001110b = 000Eh
+    36                                      
+    37                                      ;the bits 4-11 of B are the same as the bits 7-14 of A    
+    38 00000018 66A1[00000000]                  MOV AX, [A]
+    39 0000001E 6625807F                        AND AX, 0111111110000000B
+    40 00000022 66C1C802                        ROR AX, 2
+    41                                          
+    42 00000026 6609C3                          OR BX, AX; bx := 0001101000001010b
+    43                                      
+    44                                      ;the bits 12-19 of B have the value 0
+    45 00000029 66B90000                        MOV CX, 0;
+    46 0000002D 66B800F0                        MOV AX, 1111000000000000B
+    47                                          
+    48 00000031 6609C3                          OR BX, AX
+    49                                  
+    50 00000034 66B80F00                        MOV AX, 0000000000001111B
+    51                                          
+    52 00000038 6609C1                          OR CX, AX; 00000000000000000001101000001010B
+    53                                       
+    54                                      ;the bits 20-25 of B have the value 1 
+    55 0000003B 66B8F003                        MOV AX, 0000001111110000B
+    56                                          
+    57 0000003F 6609C1                          OR CX, AX; 00000011111100000001101000001010B
+    58                                          
+    59                                      ;the bits 26-31 of C are the same as the bits 3-8 of A complemented
+    60 00000042 66A1[00000000]                  MOV AX, [A]
+    61 00000048 66F7D8                          NEG AX
+    62 0000004B 6625F801                        AND AX, 0000000111111000B
+    63 0000004F 66C1C007                        ROL AX, 7
+    64                                          
+    65 00000053 6609C1                          OR CX, AX; 11010111111100000001101000001010B = D7F01A0AH
+    66                                          
+    67 00000056 66891D[02000000]             MOV WORD [B], WORD BX
+    68 0000005D 66890D[04000000]             MOV WORD [B+2], WORD CX
+    69                                          ; exit(0)
+    70 00000064 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    71 00000066 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

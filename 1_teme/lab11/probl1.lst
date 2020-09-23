@@ -1,0 +1,76 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit, printf, scanf               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import printf msvcrt.dll
+    11                                  import scanf msvcrt.dll
+    12                                  extern to16
+    13                                  ; our data is declared here (the variables needed by our program)
+    14                                  segment data use32 class=data public
+    15                                      ; ...
+    16 00000000 00000000                    a dd 0
+    17 00000004 00<rept>                    b times 8 db 0
+    18 0000000C 61203D2000                  get_a db 'a = ', 0
+    19 00000011 256400                      format_num db '%d', 0
+    20 00000014 61203D20307825730A-         format_string db 'a = 0x%s', 10, 13, 0
+    20 0000001D 0D00               
+    21 0000001F 00000000                    saveEcx dd 0
+    22 00000023 00000000                    x1 dd 0
+    23                                  ; our code starts here
+    24                                  segment code use32 class=code public
+    25                                      start:
+    26                                          ; ...
+    27 00000000 68[0C000000]                    push dword get_a
+    28 00000005 FF15[00000000]                  call [printf]
+    29                                          
+    30 0000000B 68[00000000]                    push dword a
+    31 00000010 68[11000000]                    push dword format_num
+    32 00000015 FF15[00000000]                  call [scanf]
+    33                                          
+    34 0000001B FF35[00000000]                  push dword [a]
+    35                                          ;push dword continue
+    36                                          ;jmp to16
+    37 00000021 E8(00000000)                    call to16
+    38                                          
+    39                                          
+    40                                          ;continue:
+    41 00000026 83C404                          add esp, 1*4; eliberam stiva
+    42                                          
+    43 00000029 A3[23000000]                    mov [x1], eax
+    44 0000002E 50                              push eax
+    45 0000002F 68[14000000]                    push dword format_string
+    46 00000034 FF15[00000000]                  call [printf]
+    47 0000003A 83C408                          add esp, 2*4
+    48                                          
+    49 0000003D A1[23000000]                mov eax, [x1]
+    50 00000042 B9FFFFFFFF                  mov ecx, -1
+    51 00000047 8D70FF                      lea esi, [eax - 1]
+    52                                      count:
+    53 0000004A 41                              inc ecx
+    54 0000004B 46                              inc esi
+    55 0000004C 803E00                          cmp byte [esi], 0 ;numaram caracterele
+    56 0000004F 75F9                        jne count
+    57                                      
+    58 00000051 89C6                    	mov esi, eax
+    59 00000053 49                          dec ecx
+    60 00000054 8D7C0801                    lea edi, [eax+1*ecx +1] ; in memorie, dublam sirul; pt a afisa si numarul initial stergem +1 si dec ecx
+    61                                      repeat:
+    62 00000058 890D[1F000000]                  mov [saveEcx], ecx
+    63 0000005E A4                              movsb
+    64 0000005F 56                              push dword esi
+    65 00000060 68[14000000]                    push format_string  ; afisam permutarile
+    66 00000065 FF15[00000000]                  call [printf]
+    67 0000006B 8B0D[1F000000]                  mov ecx, [saveEcx]
+    68 00000071 E2E5                        loop repeat
+    69                                          
+    70                                                  
+    71                                          
+    72                                          
+    73                                          ; exit(0)
+    74 00000073 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    75 00000075 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

@@ -1,0 +1,182 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit, fopen, fclose, fread, printf               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import fopen msvcrt.dll
+    11                                  import fclose msvcrt.dll
+    12                                  import fread msvcrt.dll
+    13                                  import printf msvcrt.dll
+    14                                  ; our data is declared here (the variables needed by our program)
+    15                                  segment data use32 class=data
+    16                                      ; ...
+    17 00000000 696E7075742E747874-         file_name db 'input.txt', 0
+    17 00000009 00                 
+    18 0000000A 7200                        access_mode db 'r', 0
+    19 0000000C FFFFFFFF                    handle dd -1
+    20 00000010 00                          char db 0
+    21 00000011 00000000                    count dd 0; count how many character exist in the frequency list
+    22 00000015 0000<rept>                  frequency times 50 dw 0
+    23 00000079 0000                        max1 db 0, 0
+    24 0000007B 0000                        max2 db 0, 0
+    25 0000007D 0000                        max3 db 0, 0
+    26 0000007F 0000                        max4 db 0, 0
+    27 00000081 0000                        max5 db 0, 0
+    28 00000083 7C206E725F63727420-         special_format db '| nr_crt = %d | character = "%c" | frequency = %d |', 10, 13, 0
+    28 0000008C 3D202564207C206368-
+    28 00000095 61726163746572203D-
+    28 0000009E 2022256322207C2066-
+    28 000000A7 72657175656E637920-
+    28 000000B0 3D202564207C0A0D00 
+    29 000000B9 0000                        var db 0, 0
+    30 000000BB 00000000                    saveEcx dd 0
+    31                                  ; our code starts here
+    32                                  segment code use32 class=code
+    33                                      start:
+    34                                          ; ...
+    35                                          ;(frequency is a list partitioned in words so that on the low word of the word it is placed a character and on the high word of the word it is placed it's frequency in the text read from input.txt file; cons
+    36                                          ;idea: read the text once; for every character read, we search for it's existence in the frequency list; if it does not exist, we place it at the next free position in frequency; if it does exist, we increme
+    37                                          
+    38                                          ;FILE * fopen(const char* nume_fisier, const char * mod_acces)
+    39 00000000 68[0A000000]                    push dword access_mode
+    40 00000005 68[00000000]                    push dword file_name
+    41 0000000A FF15[00000000]                  call [fopen]
+    42                                          
+    43 00000010 83C408                          add esp, 4*2
+    44                                          
+    45 00000013 A3[0C000000]                    mov dword [handle], eax
+    46 00000018 83F800                          cmp eax, 0
+    47 0000001B 0F8493010000                    je  theend
+    48                                          
+    49                                          repeat:
+    50                                          ;fread(atribute, size, count, handle)
+    51 00000021 FF35[0C000000]                  push dword [handle]
+    52 00000027 6A01                            push dword 1
+    53 00000029 6A01                            push dword 1
+    54 0000002B 68[10000000]                    push dword char
+    55 00000030 FF15[00000000]                  call [fread]
+    56                                          
+    57 00000036 803D[10000000]20                cmp byte [char], ' '
+    58 0000003D 74E2                            je repeat
+    59                                          
+    60 0000003F 83C410                          add esp, 4*4
+    61                                          
+    62 00000042 83F801                          cmp eax, 1
+    63 00000045 7C2F                            jl EOF
+    64                                          
+    65 00000047 BE[15000000]                    mov esi, frequency
+    66 0000004C 8B0D[11000000]                  mov ecx, dword [count]
+    67 00000052 A0[10000000]                    mov al, [char]
+    68                                          repeat1:
+    69                                          ; search for the char in the frequency list
+    70 00000057 83F900                          cmp ecx, 0
+    71 0000005A 740C                            je outofrepeat1
+    72                                          
+    73 0000005C 3A06                            cmp al, [esi]
+    74 0000005E 7411                            je increaseFrequency
+    75                                          
+    76 00000060 83C602                          add esi, 2
+    77 00000063 83E901                          sub ecx, 1
+    78 00000066 EBEF                            jmp repeat1
+    79                                          outofrepeat1:
+    80                                          ; if it will pass through the loop without jumping to the increaseFrequency label, it means that the character could not be found in the frequency list, so we will append it, and increase the counting positi
+    81 00000068 8806                            mov [esi], al
+    82 0000006A 8005[11000000]01                add byte [count], 1
+    83                                          
+    84                                          increaseFrequency:
+    85 00000071 FE4601                          inc byte [esi+1]; the frequency of a character in the frequency list is placed on the highest word of the current word in esp
+    86                                          
+    87 00000074 EBAB                            jmp repeat
+    88                                          ; until now, we must have had a correct frequency list, and all it has had been left to do is to check for the five characters with the maximum frequencies
+    89                                          
+    90                                          EOF:
+    91                                          ; wee loop through our frequency list and hold five maximums, updating them when we need to
+    92                                          
+    93 00000076 BE[15000000]                    mov esi, frequency
+    94 0000007B 8B0D[11000000]                  mov ecx, dword [count]
+    95                                  
+    96 00000081 FC                              cld
+    97                                          repeat2:
+    98 00000082 83F900                          cmp ecx, 0
+    99 00000085 0F84E5000000                    je outofrepeat2
+   100 0000008B 83E901                          sub ecx, 1
+   101 0000008E 66AD                            lodsw
+   102 00000090 6689C3                          mov bx, ax
+   103 00000093 3A3D[7A000000]                  cmp bh, [max1+1]
+   104 00000099 7239                            jb thenmax2
+   105 0000009B 66A1[7F000000]                      mov ax, word[max4]
+   106 000000A1 66A3[81000000]                      mov [max5], ax
+   107 000000A7 66A1[7D000000]                      mov ax, word[max3]
+   108 000000AD 66A3[7F000000]                      mov [max4], ax
+   109 000000B3 66A1[7B000000]                      mov ax, word[max2]
+   110 000000B9 66A3[7D000000]                      mov [max3], ax
+   111 000000BF 66A1[79000000]                      mov ax, word[max1]
+   112 000000C5 66A3[7B000000]                      mov [max2], ax
+   113 000000CB 66891D[79000000]                    mov [max1], bx
+   114 000000D2 EBAE                                jmp repeat2
+   115                                          thenmax2:
+   116 000000D4 3A3D[7C000000]                  cmp bh, [max2+1]
+   117 000000DA 7230                            jb thenmax3
+   118 000000DC 66A1[7F000000]                      mov ax, word[max4]
+   119 000000E2 66A3[81000000]                      mov [max5], ax
+   120 000000E8 66A1[7D000000]                      mov ax, word[max3]
+   121 000000EE 66A3[7F000000]                      mov [max4], ax
+   122 000000F4 66A1[7B000000]                      mov ax, word[max2]
+   123 000000FA 66A3[7D000000]                      mov [max3], ax
+   124 00000100 66891D[7B000000]                    mov [max2], bx
+   125 00000107 E976FFFFFF                          jmp repeat2
+   126                                          thenmax3:
+   127 0000010C 3A3D[7E000000]                  cmp bh, [max3+1]
+   128 00000112 7224                            jb thenmax4
+   129 00000114 66A1[7F000000]                      mov ax, word[max4]
+   130 0000011A 66A3[81000000]                      mov [max5], ax
+   131 00000120 66A1[7D000000]                      mov ax, word[max3]
+   132 00000126 66A3[7F000000]                      mov [max4], ax
+   133 0000012C 66891D[7D000000]                    mov [max3], bx
+   134 00000133 E94AFFFFFF                          jmp repeat2
+   135                                          thenmax4:
+   136 00000138 3A3D[80000000]                  cmp bh, [max4+1]
+   137 0000013E 7218                            jb thenmax5
+   138 00000140 66A1[7F000000]                      mov ax, word[max4]
+   139 00000146 66A3[81000000]                      mov [max5], ax
+   140 0000014C 66891D[7F000000]                    mov [max4], bx
+   141 00000153 E92AFFFFFF                          jmp repeat2
+   142                                          thenmax5:
+   143 00000158 3A3D[82000000]                  cmp bh, [max5+1]
+   144 0000015E 0F821EFFFFFF                    jb repeat2
+   145 00000164 66891D[81000000]                    mov [max5], bx
+   146 0000016B E912FFFFFF                      jmp repeat2
+   147                                          outofrepeat2:
+   148                                          
+   149 00000170 B905000000                      mov ecx, 5
+   150 00000175 BE[79000000]                    mov esi, max1
+   151                                          repeat3:
+   152 0000017A 890D[BB000000]                  mov [saveEcx], ecx 
+   153 00000180 8A06                            mov al, [esi]
+   154 00000182 A2[B9000000]                    mov [var], al
+   155 00000187 BB00000000                      mov ebx, 0
+   156 0000018C BA06000000                      mov edx, 6
+   157 00000191 29CA                            sub edx, ecx
+   158 00000193 8A5E01                          mov bl, [esi+1]
+   159 00000196 53                              push dword ebx
+   160 00000197 FF35[B9000000]                  push dword [var]
+   161 0000019D 52                              push dword edx
+   162 0000019E 68[83000000]                    push dword special_format
+   163 000001A3 FF15[00000000]                  call [printf]
+   164 000001A9 83C602                          add esi, 2
+   165 000001AC 8B0D[BB000000]                  mov ecx, [saveEcx]
+   166 000001B2 E2C6                            loop repeat3
+   167                                          
+   168                                          theend:
+   169                                          ;int fclose(FILE * descriptor)
+   170 000001B4 FF35[0C000000]                  push dword [handle]
+   171 000001BA FF15[00000000]                  call [fclose]
+   172 000001C0 83C404                          add esp, 4
+   173                                          
+   174                                          ; exit(0)
+   175 000001C3 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+   176 000001C5 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

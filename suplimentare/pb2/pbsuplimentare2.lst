@@ -1,0 +1,169 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ;2) Se da un fisier care contine oricate numere cu valori cuprinse in
+     7                                  ;intervalul 1-100. Scrieti un program asm care afiseaza pe ecran cea mai mare
+     8                                  ;secventa de numere cu aspect de munte din fisierul dat, fara a retine in
+     9                                  ;memorie toate numerele din acesta. In fisierul dat se pot afla oricate numere 
+    10                                  ;pe oricate linii. In cazul in care exista mai multe astfel de secvente in 
+    11                                  ;fisierul dat afisarea oricarei secvente se considera o solutie valida.
+    12                                  ;Observatie: O secventa de numere cu aspect de munte reprezinta o seventa de
+    13                                  ;numere in ordie strict crescatoare urmata de o secventa de numere strict
+    14                                  ;descrescatoare.
+    15                                  
+    16                                  ; declare external functions needed by our program
+    17                                  extern exit, fopen, fclose, fread, printf , fscanf             ; tell nasm that exit exists even if we won't be defining it
+    18                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+    19                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    20                                  import fopen msvcrt.dll
+    21                                  import fclose msvcrt.dll
+    22                                  import fread msvcrt.dll
+    23                                  import printf msvcrt.dll
+    24                                  import fscanf msvcrt.dll
+    25                                  ; our data is declared here (the variables needed by our program)
+    26                                  segment data use32 class=data
+    27                                      ; ...
+    28 00000000 736563762E74787400          inpfile db 'secv.txt', 0
+    29 00000009 7200                        modread db 'r', 0
+    30 0000000B FFFFFFFF                    handle dd -1
+    31 0000000F 61206D6F756E746169-         message db 'a mountain sequence is :', 0
+    31 00000018 6E2073657175656E63-
+    31 00000021 65206973203A00     
+    32 00000028 25642000                    format db '%d ', 0
+    33 0000002C 736F7272792C20636F-         nomountain db 'sorry, could not find a mountain sequence!', 0
+    33 00000035 756C64206E6F742066-
+    33 0000003E 696E642061206D6F75-
+    33 00000047 6E7461696E20736571-
+    33 00000050 75656E63652100     
+    34 00000057 00000000                    nr dd 0
+    35 0000005B 00                          startp db 0
+    36 0000005C 00                          len db 0
+    37 0000005D 00                          index db 0
+    38 0000005E 00                          newlen db 0
+    39                                  ; our code starts here
+    40                                  segment code use32 class=code
+    41                                      start:
+    42                                          ; ...
+    43                                                               ;fopen(path, mode)
+    44 00000000 68[09000000]                    push dword modread
+    45 00000005 68[00000000]                    push dword inpfile
+    46 0000000A FF15[00000000]                  call [fopen]
+    47 00000010 83C408                          add esp, 4*2
+    48                                          
+    49 00000013 A3[0B000000]                    mov [handle], eax
+    50 00000018 83F800                          cmp eax, 0
+    51 0000001B 0F844B010000                    je theend
+    52                                          
+    53                                                               ;fread(adress, times, size, handle)
+    54                                          repeat:
+    55 00000021 8A1D[57000000]                      mov bl, [nr]      ; first al:=0 but it will take the value of the first read nr. we will read 2 nr at each iteration
+    56 00000027 68[57000000]                        push dword nr
+    57 0000002C 68[28000000]                        push dword format
+    58 00000031 FF35[0B000000]                      push dword [handle]           ; get in nr the value of numbers in the file, one by one
+    59 00000037 FF15[00000000]                      call [fscanf]
+    60                                              
+    61 0000003D 83C40C                              add esp, 4*3
+    62                                              
+    63 00000040 83F8FF                              cmp eax, -1
+    64 00000043 7450                                je EOF
+    65                                              
+    66 00000045 FE05[5C000000]                      inc byte [len]        ; keep the length of a mountain sequence sequence
+    67 0000004B FE05[5D000000]                      inc byte [index]      ; counts how many numbers have been read
+    68                                              
+    69 00000051 803D[5C000000]01                    cmp [len], byte 1     ; if len is 1 means that we are at the first number in a sequence
+    70 00000058 7509                                jne continue          ; if len is not 1 jump at continue label
+    71 0000005A 803D[5B000000]00                    cmp [startp], byte 0h   ; if len is 1 and start is 0 it means thet we ar at the first number in the file
+    72 00000061 74BE                                je repeat             ; so we need to read another one in order to compare them
+    73                                              continue:
+    74 00000063 803D[5C000000]02                    cmp [len], byte 2     ; if len >= 2 jump to ascending label
+    75 0000006A 7D1D                                jge ascending
+    76                                                                    ; else if len  < 2 
+    77 0000006C 3A1D[57000000]                      cmp bl, [nr]          ; if the 2nd nr is greater than the 1st one it means that the sequence is ascending so far
+    78 00000072 7CAD                                jl repeat             ; so we read the next number
+    79                                                                    
+    80                                                                    ; if the 2nd nr is smaller than the 1st one and len < 2 => the sequence is not a mountain
+    81                                              notmountain:          ; not a mountain label:
+    82 00000074 8A0D[5D000000]                      mov cl, byte [index]
+    83 0000007A 880D[5B000000]                      mov [startp], cl   ; sets the starting point of a new sequence to the index of the last read number
+    84 00000080 C605[5C000000]00                    mov [len], byte 0     ; and sets the length of the new sequence to 0
+    85 00000087 EB98                                jmp repeat            ; finaly jumps to the begining(repeat label)
+    86                                              
+    87                                              ascending:            ; ascending lable
+    88 00000089 3A1D[57000000]                      cmp bl, [nr]          ; if we are here it means that the last two nr read must be in a strictly ascending order
+    89 0000008F 74E3                                je notmountain        ; if they are equal it means that the current sequence is not a mountain so jump at that label
+    90 00000091 7F02                                jg EOF                ; if the last two numbers are in a strictly descending order it means tht we have found 
+    91                                                                    ; our mountain sequence so we are not going to read any more numbers from the file
+    92 00000093 EB8C                            jmp repeat                ; if we have not find our mountain sequence untill now and we have not rich the EOF, repeat
+    93                                          
+    94                                          EOF: 
+    95 00000095 FF35[0B000000]                      push dword [handle] ; if we have reached the EOFwe close the file
+    96 0000009B FF15[00000000]                      call [fclose]
+    97                                              
+    98 000000A1 83C404                              add esp, 4*1
+    99                                              
+   100 000000A4 803D[5C000000]02                    cmp [len], byte 2   ; if we dont have a mountain sequence of at least 3 numbers jump at noseq label
+   101 000000AB 0F8CAD000000                        jl noseq
+   102                                              
+   103 000000B1 68[09000000]                        push dword modread    ; if we have a mountain sequence than we open the file again and search for the starting   
+   104 000000B6 68[00000000]                        push dword inpfile    ;point of the sequence, printing len numbers from there
+   105 000000BB FF15[00000000]                      call [fopen]                        
+   106                                              
+   107 000000C1 83C408                              add esp, 4*2
+   108                                              
+   109 000000C4 A3[0B000000]                        mov [handle], eax
+   110 000000C9 83F800                              cmp eax, 0
+   111 000000CC 0F849A000000                        je theend
+   112                                              
+   113 000000D2 8A1D[5B000000]                      mov bl, byte [startp] ; mov in cl the value of the starting point of our sequence
+   114 000000D8 C605[5D000000]00                    mov [index], byte 0     ; set index to 0 again
+   115                                              repeat1:
+   116                                                   ; parse the file again
+   117 000000DF 68[57000000]                            push dword nr
+   118 000000E4 68[28000000]                            push dword format
+   119 000000E9 FF35[0B000000]                          push dword [handle] ; read numbers from file one by one
+   120 000000EF FF15[00000000]                          call [fscanf]
+   121                                                  
+   122 000000F5 83C40C                                  add esp, 4*3
+   123                                                  
+   124 000000F8 FE05[5D000000]                          inc byte [index]     ; keep the track of the index of the current number read
+   125                                                  
+   126 000000FE 381D[5D000000]                          cmp byte [index], bl ; if the index of the current number is lower than the index of the starting pt in our seq
+   127 00000104 7CD9                                    jl repeat1           ; we read the next number  
+   128 00000106 7F1E                                    jg print             ; if we reached at the starting point of our sequence
+   129 00000108 A0[5D000000]                            mov al, [index]
+   130 0000010D 2A05[5B000000]                          sub al, [startp]
+   131 00000113 A2[5E000000]                            mov [newlen], al  ; set bl such that we can check the length of the sequence now
+   132 00000118 68[0F000000]                            push dword message   ; print the message: "the mountain sequence is: "
+   133 0000011D FF15[00000000]                          call [printf]
+   134 00000123 83C404                                  add esp, 4*1
+   135                                                  
+   136                                                  print:               ; if the index is greater than the starting point of the sequence
+   137 00000126 A0[5C000000]                            mov al,byte [len]
+   138 0000012B 3805[5E000000]                          cmp [newlen], al; and newlen is smaller than the length of the sequence we print the current number and repeat
+   139 00000131 7F39                                    jg theend           ; else it means that we have reached the final of our sequence so jump to the end
+   140                                                  
+   141 00000133 FF35[57000000]                          push dword [nr]     
+   142 00000139 68[28000000]                            push dword format
+   143 0000013E FF15[00000000]                          call [printf]
+   144 00000144 83C408                                  add esp, 4*2
+   145                                                  
+   146 00000147 FE05[5E000000]                          inc byte [newlen]
+   147 0000014D EB90                                jmp repeat1
+   148                                              
+   149 0000014F FF35[0B000000]                      push dword [handle]
+   150 00000155 FF15[00000000]                      call [fclose]
+   151                                              
+   152 0000015B 83C404                              add esp, 4*1
+   153                                              
+   154                                          noseq:               ; prints a message that we have not find a sequence
+   155 0000015E 68[2C000000]                        push dword nomountain
+   156 00000163 FF15[00000000]                      call [printf]
+   157                                              
+   158 00000169 83C404                              add esp, 4*1
+   159                                          theend: 
+   160                                          
+   161                                          ; exit(0)
+   162 0000016C 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+   163 0000016E FF15[00000000]                  call    [exit]       ; call exit to terminate the program

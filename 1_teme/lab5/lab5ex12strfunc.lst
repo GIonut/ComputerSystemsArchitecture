@@ -1,0 +1,54 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ;Two character strings S1 and S2 are given. Obtain the string D by concatenating the elements found on even positions in S2 ;and the elements found on odd positions in S1.
+     7                                  ;Example:
+     8                                  ;S1: 'a', 'b', 'c', 'd', 'e', 'f'
+     9                                  ;S2: '1', '2', '3', '4', '5'
+    10                                  ;D: '2', '4','a','c','e'
+    11                                  
+    12                                  ; declare external functions needed by our program
+    13                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+    14                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+    15                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    16                                  
+    17                                  ; our data is declared here (the variables needed by our program)
+    18                                  segment data use32 class=data
+    19                                      ; ...
+    20                                      
+    21 00000000 6162636465                  s1 db 'abcde'
+    22                                      lens1 equ $-s1
+    23 00000005 3132333435                  s2 db '12345'
+    24                                      lens2 equ $-s2
+    25 0000000A 00<rept>                    d times ((lens1+lens2)/2 + 1) db 0
+    26                                      
+    27                                  ; our code starts here
+    28                                  segment code use32 class=code
+    29                                      start:
+    30                                          ; ...
+    31 00000000 BE[05000000]                    mov esi, s2 ; s2 the source string
+    32 00000005 BF[0A000000]                    mov edi, d ;  d the destination string
+    33                                          
+    34 0000000A FC                             cld
+    35                                          repeat:    
+    36 0000000B 66AD                               lodsw
+    37 0000000D 88E0                               mov al, ah
+    38 0000000F AA                                 stosb
+    39 00000010 81FE[09000000]                     cmp esi, s2+lens2-1; if the offset in esi is smaller than the offset s2+lens2 jump to repeat. esi is now s2= s2+3
+    40 00000016 72F3                               jb repeat
+    41                                             
+    42 00000018 BE[00000000]                     mov esi, s1; s1 is the source now
+    43                                           ; the dest is now modified from d to d + (nr of even position in s2)
+    44                                           
+    45                                           repeat1:
+    46 0000001D 66AD                                lodsw
+    47 0000001F AA                                  stosb
+    48 00000020 81FE[05000000]                      cmp esi, s1+lens1
+    49 00000026 72F5                                jb repeat1
+    50                                           
+    51                                           
+    52                                          ; exit(0)
+    53 00000028 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    54 0000002A FF15[00000000]                  call    [exit]       ; call exit to terminate the program

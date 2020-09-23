@@ -1,0 +1,66 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ;lab3.ex1: c+(a*a-b+7)/(2+a), a-byte; b-doubleword; c-qword unsigned
+     4                                  
+     5                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     6                                  global start        
+     7                                  
+     8                                  ; declare external functions needed by our program
+     9                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+    10                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+    11                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    12                                  
+    13                                  ; our data is declared here (the variables needed by our program)
+    14                                  segment data use32 class=data
+    15                                      ; ...
+    16 00000000 FF                          a db 0ffh
+    17 00000001 54070000                    b dd 754h
+    18 00000005 3399827782830400            c dq 4838277829933h
+    19                                      
+    20                                  ; our code starts here
+    21                                  segment code use32 class=code
+    22                                      start:
+    23                                          ; ...
+    24 00000000 A0[00000000]                    mov al, [a]; al := a := ffh
+    25 00000005 F625[00000000]                  mul byte [a]; ax := al*a := a*a := fe01h
+    26 0000000B 6689C3                          mov bx, ax; bx := ax := a*a := fe01h
+    27                                          
+    28                                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; bx := a*a ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    29                                          
+    30                                          
+    31 0000000E 6683C307                        add bx, 7; bx := bx + 7 := a*a + 7 := fe08h
+    32 00000012 66B90000                        mov cx, 0; unsigned conversion from bx to cx:bx := 0000fe08h
+    33 00000016 662B1D[01000000]                sub bx, word[b] ;
+    34 0000001D 661B1D[03000000]                sbb bx, word[b+2]; cx:bx := cx:bx - b := 0000fe08h - 754h := 0000f6b4h
+    35                                          
+    36                                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; cx:bx := a*a - b + 7 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+    37                                          
+    38                                          
+    39 00000024 A0[00000000]                    mov al, [a]; bl := a := ffh
+    40 00000029 B400                            mov ah, 0; unsigned conversion from al to ax := 00ffh
+    41 0000002B 0402                            add al, 2;
+    42 0000002D 80D400                          adc ah, 0; ax := a+2 := 0101h
+    43 00000030 6689C2                          mov dx, ax; dx := ax := 0101h
+    44 00000033 6689D8                          mov ax, bx;
+    45 00000036 6689D3                          mov bx, dx; bx := 0101h
+    46 00000039 6689CA                          mov dx, cx; dx:ax := cx:bx := 0000f6b4h
+    47 0000003C 66F7F3                          div bx; ax := dx:ax/bx := 0000f6b4h/0101h := 00f5h , dx := 00bfh
+    48 0000003F 66BA0000                        mov dx, 0; unsigned conversion from ax to dx:ax := 00f5h
+    49 00000043 6652                            push dx
+    50 00000045 6650                            push ax
+    51 00000047 5B                              pop ebx;
+    52 00000048 B900000000                      mov ecx, 0; unsigned conversion from ebx to ecx:ebx
+    53                                          
+    54                                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; ecx:ebx := (a*a - b + 7)/(a+2) ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    55                                          
+    56                                          
+    57 0000004D A1[05000000]                    mov eax, [c]
+    58 00000052 8B15[09000000]                  mov edx, [c+4]; edx:eax := c 
+    59 00000058 01D8                            add eax, ebx;
+    60 0000005A 11CA                            adc edx, ecx; edx:eax := edx:eax + ecx:ebx := c + (a*a - b +7)/(a+2)
+    61                                  
+    62                                  
+    63                                          
+    64                                          ; exit(0)
+    65 0000005C 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    66 0000005E FF15[00000000]                  call    [exit]       ; call exit to terminate the program

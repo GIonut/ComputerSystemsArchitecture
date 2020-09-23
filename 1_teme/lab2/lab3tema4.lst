@@ -1,0 +1,81 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  
+    11                                  ; our data is declared here (the variables needed by our program)
+    12                                  segment data use32 class=data
+    13                                      ; ...
+    14                                   ;x+a/b+c*d-b/c+e = ; a,b,d-byte; c-word; e-doubleword; x-qword ; all signed
+    15 00000000 EF                          a db 0efh; 1110 1111 = -17 = ffefh
+    16 00000001 12                          b db 12h
+    17 00000002 4200                        c dw 42h
+    18 00000004 9A                          d db 9ah; 1001 1010 = -102 = ff9ah
+    19 00000005 C5920900                    e dd 992c5h
+    20 00000009 ABAAAA3A00000000            x dq 3aaaaaabh
+    21                                  ; our code starts here
+    22                                  segment code use32 class=code
+    23                                      start:
+    24                                          ; ...
+    25 00000000 A0[00000000]                   mov al, [a]; al := a
+    26 00000005 6698                           cbw; signed conversion from al to ax := a
+    27 00000007 F63D[01000000]                 idiv byte [b]; al := ax / b = a / b  ah := ax % b 
+    28 0000000D 6698                           cbw; signed conversion from al to ax := a
+    29 0000000F 6689C3                         mov bx, ax; bx := ax = a / b
+    30                                         
+    31                                      ;************************************************ bx := a / b ***********************************************************   
+    32                                         
+    33 00000012 A0[01000000]                   mov al, [b]; al := b
+    34 00000017 6698                           cbw; signed conversion from al to ax := b
+    35 00000019 6699                           cwd; signed conversion from ax to dx:ax := a
+    36 0000001B 66F73D[02000000]               idiv word [c]; ax := dx:ax / c = b / c  dx := dx:ax % c
+    37 00000022 6699                           cwd; signed conversion from ax to dx:ax := b/c
+    38                                         
+    39                                      ;************************************************  dx:ax := b / c ******************************************************    
+    40                                         
+    41 00000024 6689C1                         mov cx, ax; cx := ax 
+    42 00000027 6689D8                         mov ax, bx; ax := bx = a/b
+    43 0000002A 6689CB                         mov bx, cx; bx := cx } => cx:bx := b/c
+    44 0000002D 6689D1                         mov cx, dx; cx := dx }
+    45 00000030 6699                           cwd; signed conversion from ax to dx:ax := a/b
+    46 00000032 6629D8                         sub ax, bx; ax := ax - bx      } => dx:ax := dx:ax - cx:bx = a/b - b/c
+    47 00000035 6619CA                         sbb dx, cx; dx := dx - cx - cf }
+    48 00000038 6689C3                         mov bx, ax;
+    49 0000003B 6689D1                         mov cx, dx;
+    50                                         
+    51                                      ;************************************************ cx:bx := a/b - b/c ***************************************************    
+    52                                         
+    53 0000003E A0[04000000]                   mov al, [d]; al := d
+    54 00000043 6698                           cbw; signed conversion from al to ax := d
+    55 00000045 66F72D[02000000]               imul word [c]; dx:ax := c*d
+    56                                         
+    57                                      ;************************************************ dx:ax := c*d *********************************************************    
+    58                                        
+    59 0000004C 6601D8                         add ax, bx; ax := ax + bx      } => dx:ax := dx:ax + cx:bx = a/b + c*d - b/c 
+    60 0000004F 6611CA                         adc dx, cx; dx := dx + cx + cf }
+    61                                         
+    62                                         
+    63                                      ;************************************************ dx:ax := a/b + c*d - b/c *********************************************    
+    64                                        
+    65 00000052 660305[05000000]               add ax, [e]; add to bx the word starting at the adress e
+    66 00000059 661315[07000000]               adc dx, [e+2]; add with carry flag the word starting at the adress e + 2 
+    67 00000060 6652                           push dx
+    68 00000062 6650                           push ax
+    69 00000064 58                             pop eax
+    70 00000065 99                             cdq; unsigned conversion from eax to edx:eax
+    71                                         
+    72                                      ;********************************************* edx:eax := a/b + c*d - b/c + e ******************************************    
+    73                                      
+    74 00000066 0305[09000000]                  add eax, [x]; adds in eax the dword starting at the adress pointed by [x]
+    75 0000006C 1315[0D000000]                  adc edx, [x+4]; adds in edx the dword starting at the adress pointed by [x+4]
+    76                                      
+    77                                      ;****************************************** edx:eax := x + a/b + c*d - b/c + e *****************************************    
+    78                                      
+    79                                          ; exit(0)
+    80 00000072 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    81 00000074 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

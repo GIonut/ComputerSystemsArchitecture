@@ -1,0 +1,146 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit, fopen, fclose, fread, scanf, printf               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import fopen msvcrt.dll
+    11                                  import fclose msvcrt.dll
+    12                                  import fread msvcrt.dll
+    13                                  import scanf msvcrt.dll
+    14                                  import printf msvcrt.dll
+    15                                  ; our data is declared here (the variables needed by our program)
+    16                                  segment data use32 class=data
+    17                                      ; ...
+    18 00000000 <res 00000001>              n resb 1
+    19 00000001 256400                      formatn db '%d', 0
+    20 00000004 676574206E203D2000          messagen db  'get n = ', 0
+    21 0000000D 706231342E74787400          filename db 'pb14.txt', 0
+    22 00000016 FFFFFFFF                    handle dd -1
+    23 0000001A 256300                      formatchar db '%c', 0
+    24 0000001D 00                          char db '', 0
+    25 0000001E 7200                        modread db 'r', 0
+    26 00000020 746865206E65772073-         message db 'the new sentence is: %s', 0
+    26 00000029 656E74656E63652069-
+    26 00000032 733A20257300       
+    27 00000038 00                          count db 0
+    28 00000039 00                          countwords db 0
+    29 0000003A 00                          wordindex db 0
+    30 0000003B <res 0000000F>              aWord resb 15
+    31 0000004A <res 0000001E>              sentence resb 30
+    32                                  ; our code starts here
+    33                                  segment code use32 class=code
+    34                                      start:
+    35                                          ; ...
+    36                                          ; read n: scanf(formatn, n)
+    37 00000000 68[04000000]                    push messagen; 'get n='
+    38 00000005 FF15[00000000]                  call [printf]
+    39 0000000B 83C404                          add esp, 4
+    40                                          
+    41 0000000E 68[00000000]                    push dword n
+    42 00000013 68[01000000]                    push dword formatn
+    43 00000018 FF15[00000000]                  call [scanf]
+    44 0000001E 83C408                          add esp, 4*2
+    45                                          
+    46                                          ; read n sentences (until n '.' have been read): fread(handle, size, count, format)
+    47                                          
+    48 00000021 68[1E000000]                    push dword modread
+    49 00000026 68[0D000000]                    push dword filename
+    50 0000002B FF15[00000000]                  call [fopen]
+    51 00000031 83C408                          add esp, 4*2
+    52                                          
+    53 00000034 A3[16000000]                    mov [handle], eax
+    54 00000039 83F800                          cmp eax, 0
+    55 0000003C 0F84D0000000                    jz error
+    56                                          
+    57 00000042 BF[4A000000]                    mov edi, sentence
+    58                                          repeat:
+    59 00000047 FF35[16000000]                      push dword [handle]
+    60 0000004D 6A01                                push dword 1
+    61 0000004F 6A01                                push dword 1
+    62 00000051 68[1D000000]                        push dword char
+    63 00000056 FF15[00000000]                      call [fread]
+    64                                              
+    65 0000005C 83C410                              add esp, 4*4
+    66                                              
+    67 0000005F 803D[1D000000]0A                    cmp byte[char], 0x0A
+    68 00000066 7528                                jne notNewSentence
+    69                                              
+    70 00000068 FE0D[00000000]                      dec byte [n]    ; if char is '.' then we are at the end of a sentence so we decrement n and 
+    71                                              
+    72 0000006E 8A0D[38000000]                      mov cl, byte[count]
+    73 00000074 380D[39000000]                      cmp byte[countwords], cl
+    74 0000007A 741D                                je lastword
+    75                                              
+    76 0000007C C605[39000000]00                    mov byte[countwords], 0 ; set count to 0; we now count the words from a new sentence 
+    77 00000083 C605[3A000000]00                    mov byte[wordindex], 0
+    78 0000008A FE05[38000000]                      inc byte[count] ; increment count so we get the word from the next position in the next sentence
+    79                                              
+    80                                              notNewSentence:
+    81 00000090 803D[1D000000]20                    cmp byte[char], ' '
+    82 00000097 753D                                jne notNewWord
+    83                                              lastword:
+    84 00000099 8A0D[38000000]                      mov cl, byte[count]
+    85 0000009F 380D[39000000]                      cmp byte[countwords], cl
+    86 000000A5 7522                                jne notOurWord
+    87                                              
+    88 000000A7 FC                                  cld
+    89 000000A8 BE[3B000000]                        mov esi, aWord
+    90 000000AD A0[3A000000]                        mov al, [wordindex]
+    91 000000B2 6698                                cbw
+    92 000000B4 98                                  cwde
+    93 000000B5 89C1                                mov ecx, eax
+    94                                  
+    95                                              again:
+    96 000000B7 A4                                  movsb
+    97 000000B8 E2FD                                loop again
+    98                                              
+    99 000000BA FE05[39000000]                      inc byte[countwords] ; if char is ' ' => we are at a new word in the current sentence so we increment count
+   100 000000C0 C605[3A000000]00                    mov byte[wordindex], 0; we do not clear the bytes in aWord; we just consider them free so that we can overwrite them
+   101 000000C7 EB29                                jmp check
+   102                                              
+   103                                              notOurWord:
+   104                                              
+   105 000000C9 FE05[39000000]                      inc byte[countwords] ; if char is ' ' => we are at a new word in the current sentence so we increment count
+   106 000000CF C605[3A000000]00                    mov byte[wordindex], 0; we do not clear the bytes in aWord; we just consider them free so that we can overwrite them
+   107                                              
+   108                                              notNewWord:
+   109                                              
+   110 000000D6 8A0D[1D000000]                      mov cl, [char]  ; if char is neither ' '` nor '.' then we add it to the aword, at the index wordindex
+   111 000000DC BB[3B000000]                        mov ebx, aWord
+   112 000000E1 A0[3A000000]                        mov al, byte[wordindex]
+   113 000000E6 6698                                cbw
+   114 000000E8 98                                  cwde
+   115 000000E9 880C03                              mov byte[ebx+1*eax], cl
+   116 000000EC FE05[3A000000]                      inc byte[wordindex]; then increment wordindex
+   117                                              
+   118                                              check:
+   119 000000F2 803D[00000000]00                    cmp byte[n], 0; if we have parse all the sentences so that n = 0 we exit the loop
+   120 000000F9 0F8548FFFFFF                        jne repeat
+   121                                             
+   122 000000FF 68[4A000000]                    push sentence
+   123 00000104 68[20000000]                    push message
+   124 00000109 FF15[00000000]                  call [printf]
+   125 0000010F 83C408                          add esp, 4*2
+   126                                          
+   127                                          error:
+   128                                          ; exit(0)
+   129 00000112 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+   130 00000114 FF15[00000000]                  call    [exit]       ; call exit to terminate the program
+   131                                  
+   132                                          
+   133                                  ;Read an integer (positive number) n from keyboard. Then read n sentences containing at least n words (no validation needed).
+   134                                  ;Print the string containing the concatenation of the word i of the sentence i, for i=1,n (separated by a space).
+   135                                  ;Example: n=5
+   136                                  ;We read the following 5 sentences:
+   137                                  ;We read the following 5 sentences.
+   138                                  ;Today is monday and it is raining.
+   139                                  ;My favorite book is the one I just showed you.
+   140                                  ;It is pretty cold today.
+   141                                  ;Tomorrow I am going shopping down town.
+   142                                  
+   143                                  ;The string printed on the screen should be:
+   144                                  ;We is book cold shopping.

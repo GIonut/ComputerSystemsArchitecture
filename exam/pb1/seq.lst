@@ -1,0 +1,51 @@
+     1                                  bits 32 
+     2                                  
+     3                                  global start        
+     4                                  extern function
+     5                                  
+     6                                  extern exit, printf               
+     7                                  import exit msvcrt.dll
+     8                                  import printf msvcrt.dll
+     9                                  
+    10                                  segment data use32 class=data public
+    11                                      ; ...
+    12 00000000 0C0301040F03010306-         sir db 12,3,1,4,15,3,1,3,6,1,3,5, 113, 41, 17, 19, 6,0
+    12 00000009 010305712911130600 
+    13 00000012 <res 00000012>              seqv resb $-sir
+    14 00000024 00000000                    begin dd 0
+    15 00000028 00000000                    len dd 0
+    16 0000002C 25782000                    format db '%x ', 0
+    17                                  
+    18                                  segment code use32 class=code public
+    19                                      start:
+    20                                          ; ...
+    21 00000000 68[00000000]                    push dword sir
+    22 00000005 E8(00000000)                    call function
+    23                                          
+    24 0000000A A3[24000000]                    mov dword [begin], eax
+    25 0000000F 891D[28000000]                  mov dword [len], ebx
+    26                                          
+    27 00000015 BE[00000000]                    mov esi, sir
+    28 0000001A 0335[24000000]                  add esi, [begin]
+    29 00000020 BF[12000000]                    mov edi, seqv
+    30                                          repeat:
+    31 00000025 833D[28000000]00                    cmp dword[len], 0
+    32 0000002C 741D                                je endloop
+    33                                              
+    34 0000002E 8A06                                mov al, byte [esi]
+    35 00000030 B400                                mov ah, 0 
+    36 00000032 98                                  cwde
+    37 00000033 50                                  push eax
+    38 00000034 68[2C000000]                        push dword format
+    39 00000039 FF15[00000000]                      call [printf]
+    40 0000003F 83C408                              add esp, 4*2
+    41                                              
+    42 00000042 A4                                  movsb
+    43 00000043 FF0D[28000000]                      dec dword[len]
+    44 00000049 EBDA                            jmp repeat
+    45                                          endloop:
+    46                                          
+    47                                          
+    48                                          ; exit(0)
+    49 0000004B 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    50 0000004D FF15[00000000]                  call    [exit]       ; call exit to terminate the program

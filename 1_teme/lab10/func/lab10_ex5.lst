@@ -1,0 +1,53 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit, printf               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import printf msvcrt.dll
+    11                                  ; our data is declared here (the variables needed by our program)
+    12                                  segment data use32 class=data
+    13                                      ; ...
+    14 00000000 B6200000                    a dd 8374
+    15 00000004 3F000000                    b dd 63
+    16 00000008 0000                        quotient dw 0 ; 132
+    17 0000000A 0000                        remainder dw 0; 58
+    18 0000000C 51756F7469656E7420-         formatq db 'Quotient = %d %c', 0
+    18 00000015 3D20256420256300   
+    19 0000001D 72656D61696E646572-         formatr db 'remainder = %d', 0
+    19 00000026 203D20256400       
+    20                                  ; our code starts here
+    21                                  segment code use32 class=code
+    22                                      start:
+    23                                          ; ...
+    24 00000000 A1[00000000]                    mov eax, [a]
+    25 00000005 99                              cdq                 ; convert doubleword [a] to quadword preparing it for division whit a doubleword
+    26 00000006 F73D[04000000]                  idiv dword [b]      ; sign division edx:eax / [b] => ax:=quotient; dx:=remainder 
+    27                                          
+    28 0000000C 66A3[08000000]                  mov [quotient], ax  ; save ax in the adress pointed by quotient lable
+    29 00000012 668915[0A000000]                mov [remainder], dx ;   save dx in the adress pointed by remainder label
+    30                                                              
+    31                                                              ; printf( "Quotient = %d %c", eax, 10)
+    32 00000019 66A1[08000000]                  mov ax, [quotient]  ; ax gets the value pointed in memory by the lable quotient
+    33 0000001F 98                              cwde                ; convert ax (quotient) from word to doubleword in order 
+    34                                                              ; to use it as a parameter for printf function  so ax -> eax
+    35 00000020 6A0A                            push dword 10       ; last parameter for printf function is character 10 ascii for LF-newline
+    36 00000022 50                              push dword eax      ; second parameter from right to left for printf function is the value of the quotient (doubleword)
+    37 00000023 68[0C000000]                    push dword formatq  ; first parameter for printf function is the formatq
+    38 00000028 FF15[00000000]                  call [printf]       ; call the function
+    39 0000002E 83C40C                          add esp, 4*3        ; free the stack of the function's parameters(3)
+    40                                          
+    41 00000031 66A1[0A000000]                  mov ax, [remainder] ;ax gets the value pointed in memory by the lable remainder
+    42 00000037 98                              cwde                ; convert ax (remainder) from word to doubleword in order 
+    43                                          
+    44                                                              ; printf("remainder = %d", eax)
+    45 00000038 50                              push dword eax      ; last parameter from right to left for printf function is the value of the remainder (doubleword)
+    46 00000039 68[1D000000]                    push dword formatr  ; first parameter for printf function is the formatr
+    47 0000003E FF15[00000000]                  call [printf]       ; call the function
+    48 00000044 83C408                          add esp, 4*2        ; free the stack of the function's parameters(2)
+    49                                          ; exit(0)
+    50 00000047 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    51 00000049 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

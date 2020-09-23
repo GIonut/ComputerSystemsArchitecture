@@ -1,0 +1,54 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ;PROBLEM STATEMENT
+     7                                  ;An unsigned number a on 32 bits is given. Print the hexadecimal representation of a, but also the results of the circular ;permutations of its hex digits.
+     8                                  
+     9                                  ; declare external functions needed by our program
+    10                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+    11                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+    12                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    13                                  
+    14                                  ; our data is declared here (the variables needed by our program)
+    15                                  segment data use32 class=data
+    16                                      ; ...
+    17 00000000 39300000                    a dd 12345
+    18 00000004 00<rept>                    x times 8 db 0
+    19                                  ; our code starts here
+    20                                  segment code use32 class=code
+    21                                      start:
+    22                                          ; ...
+    23 00000000 FF35[00000000]                  push dword [a]
+    24 00000006 6A00                            push dword 0
+    25                                          to16:
+    26 00000008 668B442404                          mov ax, [esp+4] ; punem in dx:ax numarul transmis ca parametru
+    27 0000000D 668B542406                          mov dx, [esp+6]
+    28 00000012 B900000000                          mov ecx, 0
+    29                                              .repeat:
+    30 00000017 66BB1000                                mov bx, 16
+    31 0000001B 66F7F3                                  div bx; impartim succesiv numarul la 16 eax/bx => dx:=eax%bx  ax = eax/bx
+    32 0000001E 6683FA0A                                cmp dx, 10
+    33 00000022 7204                                    jb .notletter
+    34 00000024 6683EA10                                    sub dx, 16; daca restul e mai mare ca 9 atunci pregatim transformarea in litera mare ex: 'A' = '0'- 16 etc
+    35                                                  .notletter:
+    36 00000028 6683C230                                    add dx, '0'; transformam restul in caracter
+    37 0000002C 6652                                    push dx ; punem pe stiva restul, un word, ca mai apoi sa il putem lua in ordine inversa
+    38 0000002E 66BA0000                                mov dx, 0
+    39 00000032 41                                      inc ecx
+    40 00000033 6683F800                            cmp ax, 0
+    41 00000037 77DE                                ja .repeat
+    42                                              
+    43 00000039 FC                              cld 
+    44 0000003A 89DF                            mov edi, ebx
+    45                                          
+    46                                          .repeat1:
+    47 0000003C 6658                                pop ax
+    48 0000003E AA                                  stosb
+    49 0000003F E2FB                            loop .repeat1
+    50                                          
+    51 00000041 FF35[04000000]                  push dword [x]
+    52                                          ; exit(0)
+    53 00000047 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    54 00000049 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

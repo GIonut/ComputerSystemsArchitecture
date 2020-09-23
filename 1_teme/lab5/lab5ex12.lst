@@ -1,0 +1,57 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ;Two character strings S1 and S2 are given. Obtain the string D by concatenating the elements found on even positions in S2 ;and the elements found on odd positions in S1.
+     7                                  ;Example:
+     8                                  ;S1: 'a', 'b', 'c', 'd', 'e', 'f'
+     9                                  ;S2: '1', '2', '3', '4', '5'
+    10                                  ;D: '2', '4','a','c','e'
+    11                                  
+    12                                  ; declare external functions needed by our program
+    13                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+    14                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+    15                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    16                                  
+    17                                  ; our data is declared here (the variables needed by our program)
+    18                                  segment data use32 class=data
+    19                                      ; ...
+    20                                      
+    21 00000000 616263646566                s1 db 'abcdef'
+    22                                      lens1 equ $-s1
+    23 00000006 3132333435                  s2 db '12345'
+    24                                      lens2 equ $-s2
+    25 0000000B 00<rept>                    d times ((lens1+lens2)/2 + 1) db 0
+    26                                      
+    27                                  ; our code starts here
+    28                                  segment code use32 class=code
+    29                                      start:
+    30                                          ; ...
+    31 00000000 BE[07000000]                    mov esi, s2+1 ; s2 the source string, but we start from pos 2(even pos)
+    32 00000005 BF[0B000000]                    mov edi, d ;  d the destination string
+    33                                          
+    34                                         
+    35                                          repeat:    
+    36 0000000A 8A06                               mov al, [esi] ; move in al the byte from the offset esi AL:= [s2+1] := 2
+    37 0000000C 8807                               mov [edi], al; move in the byte frrom the offset edi the byte from al => [d] := 2
+    38 0000000E 83C602                             add esi, 2; go to the next even position
+    39 00000011 47                                 inc edi; go to the next element in d we need to coplete
+    40 00000012 81FE[0B000000]                     cmp esi, s2+lens2; if the offset in esi is smaller than the offset s2+lens2 jump to repeat lable. esi is now s2= s2+3
+    41 00000018 72F0                               jb repeat
+    42                                             
+    43 0000001A BE[00000000]                     mov esi, s1; s1 is the source now
+    44                                           ; the dest is now modified from d to d + (nr of even position in s2)
+    45                                           
+    46                                           repeat1:
+    47 0000001F 8A06                                mov al, [esi]; move in al the byte from the offset esi (from the first odd pos in s1)
+    48 00000021 8807                                mov [edi], al; mov in byte from the offset edi the byte al
+    49 00000023 83C602                              add esi, 2; move to the next odd pos in s1
+    50 00000026 47                                  inc edi; move to the next position in d so the next position that has to be completed with a nr on odd pos in s1
+    51 00000027 81FE[06000000]                      cmp esi, s1+lens1
+    52 0000002D 72F0                                jb repeat1
+    53                                           
+    54                                           
+    55                                          ; exit(0)
+    56 0000002F 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    57 00000031 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

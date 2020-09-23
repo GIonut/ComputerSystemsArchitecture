@@ -1,0 +1,11 @@
+02.	Se citeste un text din fisier si un character de la tastatura.
+
+a)	Calculati numarul de aparitii al caracterului citit in textul dat si inlocuiti-l cu X, scriind reszultatul in alt fisier output.txt
+
+b)	Afisati top 5 caractere ca frecventa in textul dat, afisand (nrcrt character frecventa).
+
+c)	Codificati textul folosind corespondenta ABCDâŚ WXYZ -> CDEFâŚ  YZAB si afisati condificarea intr-un nou fisier.
+
+d)	Calculati lungimea fisierului.
+
+e)      Calculati numarul de cuvinte din fisier.

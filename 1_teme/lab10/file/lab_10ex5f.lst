@@ -1,0 +1,92 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ;A text file is given. Read the content of the file, count the number of special characters and display the result on the ;screen. The name of text file is defined in the data segment.;
+     7                                  
+     8                                  ; declare external functions needed by our program
+     9                                  extern exit, fopen, fclose, fread, printf               ; tell nasm that exit exists even if we won't be defining it
+    10                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+    11                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    12                                  import fopen msvcrt.dll
+    13                                  import fclose msvcrt.dll
+    14                                  import fread msvcrt.dll
+    15                                  import printf msvcrt.dll
+    16                                  ; our data is declared here (the variables needed by our program)
+    17                                  segment data use32 class=data
+    18                                      ; ...
+    19 00000000 612E74787400                inputfile db 'a.txt', 0
+    20 00000006 7200                        modread db 'r', 0
+    21 00000008 FFFFFFFF                    handle dd -1
+    22 0000000C 6E756D4F6653706563-         format db 'numOfSpecChar = %d', 0
+    22 00000015 43686172203D202564-
+    22 0000001E 00                 
+    23 0000001F 00                          char db '', 0
+    24 00000020 00                          count db 0
+    25                                      
+    26                                  ; our code starts here
+    27                                  segment code use32 class=code
+    28                                      start:
+    29                                          ; ...
+    30 00000000 68[06000000]                    push dword modread
+    31 00000005 68[00000000]                    push dword inputfile
+    32 0000000A FF15[00000000]                  call [fopen]
+    33 00000010 83C408                          add esp, 4*2
+    34                                          
+    35 00000013 A3[08000000]                    mov [handle], eax
+    36 00000018 83F800                          cmp eax, 0
+    37 0000001B 7465                            je theend
+    38                                          
+    39                                          repeat:
+    40 0000001D FF35[08000000]                      push dword [handle]
+    41 00000023 6A01                                push dword 1
+    42 00000025 6A01                                push dword 1
+    43 00000027 68[1F000000]                        push dword char
+    44 0000002C FF15[00000000]                      call [fread]
+    45 00000032 83C410                              add esp, 4*4
+    46                                          
+    47 00000035 83F800                              cmp eax, 0
+    48 00000038 7425                                je endOfFile
+    49                                              
+    50 0000003A A0[1F000000]                        mov al, [char]
+    51                                              
+    52 0000003F 3C30                                cmp al, '0'
+    53 00000041 7C04                                jl notdigit
+    54 00000043 3C39                                cmp al, '9'
+    55 00000045 7ED6                                jle repeat
+    56                                              
+    57                                              notdigit:
+    58 00000047 3C41                                cmp al, 'A'
+    59 00000049 7C04                                jl notucase
+    60 0000004B 3C5A                                cmp al, 'Z'
+    61 0000004D 7ECE                                jle repeat
+    62                                              
+    63                                              notucase:
+    64 0000004F 3C61                                cmp al, 'a'
+    65 00000051 7C04                                jl notlcase
+    66 00000053 3C7A                                cmp al, 'z'
+    67 00000055 7EC6                                jle repeat
+    68                                              
+    69                                              notlcase:
+    70                                              
+    71 00000057 FE05[20000000]                      inc byte [count]
+    72                                              
+    73 0000005D EBBE                            jmp repeat
+    74                                          
+    75                                          endOfFile:
+    76                                          
+    77 0000005F FF35[20000000]                  push dword [count]
+    78 00000065 68[0C000000]                    push dword format
+    79 0000006A FF15[00000000]                  call [printf]
+    80 00000070 83C408                          add esp, 4*2
+    81                                          
+    82 00000073 FF35[08000000]                  push dword [handle]
+    83 00000079 FF15[00000000]                  call [fclose]
+    84 0000007F 83C404                          add esp, 4*1
+    85                                          
+    86                                          
+    87                                          theend:
+    88                                          ; exit(0)
+    89 00000082 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    90 00000084 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

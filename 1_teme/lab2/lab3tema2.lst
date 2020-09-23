@@ -1,0 +1,65 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  
+    11                                  ; our data is declared here (the variables needed by our program)
+    12                                  segment data use32 class=data
+    13                                      ; ...
+    14                                      ;a - byte, b - word, c - double word, d - qword - Signed representation
+    15                                      ; c-(d+a)+(b+c) = 34h - (92873h + 23h) + ( 123h + 34h) = 34h - 92896h + 157h = fff6d8f5h
+    16 00000000 23                          a db 23h
+    17 00000001 2301                        b dw 123h
+    18 00000003 34000000                    c dd 34h
+    19 00000007 7328090000000000            d dq 92873h
+    20                                  ; our code starts here
+    21                                  segment code use32 class=code
+    22                                      start:
+    23                                          ; ...
+    24 00000000 66A1[01000000]                  mov ax, [b]; bx := b
+    25 00000006 6699                            cwd ; signed conversion from ax to dx:ax => dx:ax := b
+    26 00000008 668B1D[03000000]                mov bx, [c]; move a word starting from the adress pointing by [c] in bx
+    27 0000000F 668B0D[05000000]                mov cx, [c+2] ; move a word starting from the adress pointing by [c+2] in cx  => bx:cx := c
+    28 00000016 6601C3                          add bx, ax; bx := bx + ax     } => cx:bx := bx + ax = b + c
+    29 00000019 6611D1                          adc cx, dx; cx := cx + dx +cf }
+    30 0000001C 6651                            push cx
+    31 0000001E 6653                            push bx
+    32 00000020 5B                              pop ebx ; ebx := cx:bx := b + c 
+    33 00000021 89D8                            mov eax, ebx ;eax := ebx = b + c
+    34 00000023 99                              cdq; signed conversion from eax to edx:eax => edx:eax := b+c
+    35 00000024 89C3                            mov ebx, eax ;}-> ecx:ebx := edx:eax = b + c
+    36 00000026 89D1                            mov ecx, edx ;}
+    37                                          
+    38                                      ; ************************************************* ecx:ebx := b + c *******************************************************
+    39                                          
+    40 00000028 A1[03000000]                    mov eax, [c]; eax := c
+    41 0000002D 99                              cdq ; signed conversion from eax to edx:eax => edx:eax := c
+    42 0000002E 01C3                            add ebx, eax; ebx := ebx + eax
+    43 00000030 11D1                            adc ecx, edx; ebx:ecx := c+(b+c)
+    44                                      
+    45                                      ;************************************************ ebx:ecx := c+(b+c) ***************************************************
+    46                                  
+    47 00000032 A0[00000000]                    mov al, [a]; al := a
+    48 00000037 6698                            cbw ; signed conversion from al to ax => ax := a
+    49 00000039 98                              cwde ; signed conversion from ax to eax => eax := a
+    50 0000003A 8B0D[07000000]                  mov ecx, [d]; move a dword starting from the adress pointing by [d] in ecx
+    51 00000040 8B15[0B000000]                  mov edx, [d+4]; move a dword starting from the adress pointing by [d+4] in edx
+    52 00000046 01C8                            add eax, ecx; eax := eax + ecx  } => edx:eax := d + a
+    53 00000048 83D200                          adc edx, 0; edx := edx + 0 + cf }
+    54                                      
+    55                                      ;*********************************************** edx:eax := d + a **********************************************************
+    56                                          
+    57 0000004B 29C3                            sub ebx, eax ; ebx := ebx - eax }=> ecx:ebx := ecx:ebx - edx:eax = c-(d+a)+(b+c)
+    58 0000004D 19D1                            sbb ecx, edx ; ecx := ecx - edx }
+    59 0000004F 89CA                            mov edx, ecx; move the result in edx:eax
+    60 00000051 89D8                            mov eax, ebx;
+    61                                          
+    62                                      ;************************************************ edx:eax := c-(d+a)+(b+c) *************************************************
+    63                                          ; exit(0)
+    64 00000053 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    65 00000055 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

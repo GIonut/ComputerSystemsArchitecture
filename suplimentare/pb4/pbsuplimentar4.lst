@@ -1,0 +1,86 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ;4) Scrieti un program asm care citeste de la tastatura  un sir de maxim 10
+     7                                  ;caractere de la tastatura, dupa care se vor citi numere intregi de la
+     8                                  ;tastatura pana la introducerea numarului 0. Numerele citite de la tastatura
+     9                                  ;se vor scrie in baza 16, pe cate o linie intr-un fisier avand numele identic
+    10                                  ;cu sirul de caractere citit la inceputul programului.
+    11                                  
+    12                                  
+    13                                  ; declare external functions needed by our program
+    14                                  extern exit, fopen, fclose, fprintf, scanf                ; tell nasm that exit exists even if we won't be defining it
+    15                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+    16                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    17                                  import fopen msvcrt.dll
+    18                                  import fclose msvcrt.dll
+    19                                  import fprintf msvcrt.dll
+    20                                  import scanf msvcrt.dll
+    21                                  ; our data is declared here (the variables needed by our program)
+    22                                  segment data use32 class=data
+    23                                      ; ...
+    24 00000000 00<rept>                    outpfile times 11 db  0
+    25 0000000B 7700                        modwrite db 'w', 0
+    26 0000000D FFFFFFFF                    handle dd -1
+    27 00000011 00000000                    nr dd 0
+    28 00000015 257300                      formats db '%s', 0
+    29 00000018 256400                      formatd db '%d', 0
+    30 0000001B 257820256300                formatx db '%x %c', 0
+    31 00000021 256300                      formatc db '%c', 0
+    32                                      
+    33                                  ; our code starts here
+    34                                  segment code use32 class=code
+    35                                      start:
+    36                                          ; ...
+    37                                          ; scanf(format, adress)
+    38 00000000 68[00000000]                    push dword outpfile
+    39 00000005 68[15000000]                    push dword formats
+    40 0000000A FF15[00000000]                  call [scanf]
+    41                                          
+    42 00000010 83C408                          add esp, 4*2
+    43                                          
+    44 00000013 C605[0A000000]00                mov [outpfile+10], byte 0
+    45                                          
+    46                                          ; fopen(file, mode)
+    47 0000001A 68[0B000000]                    push dword modwrite
+    48 0000001F 68[00000000]                    push dword outpfile
+    49 00000024 FF15[00000000]                  call [fopen]
+    50                                          
+    51 0000002A 83C408                          add esp, 4*2
+    52 0000002D A3[0D000000]                    mov [handle], eax
+    53                                          
+    54 00000032 83F800                          cmp eax, 0
+    55 00000035 743A                            je theend
+    56                                          
+    57                                          repeat:
+    58                                              ; scanf(format, adress)
+    59 00000037 68[11000000]                        push dword nr
+    60 0000003C 68[18000000]                        push dword formatd
+    61 00000041 FF15[00000000]                      call [scanf]
+    62                                              
+    63 00000047 83C408                              add esp, 4*2
+    64                                              
+    65 0000004A 833D[11000000]00                    cmp [nr], dword 0   
+    66 00000051 741E                                je theend
+    67                                              
+    68                                              ; fprintf(file, format, adress)
+    69 00000053 6A0A                                push dword 10
+    70 00000055 FF35[11000000]                      push dword [nr]
+    71 0000005B 68[1B000000]                        push dword formatx
+    72 00000060 FF35[0D000000]                      push dword [handle]
+    73 00000066 FF15[00000000]                      call [fprintf]
+    74                                              
+    75 0000006C 83C410                              add esp, 4*4
+    76 0000006F EBC6                             jmp repeat 
+    77                                  
+    78                                           theend:
+    79 00000071 FF35[0D000000]                      push dword [handle]
+    80 00000077 FF15[00000000]                      call [fclose]
+    81                                              
+    82 0000007D 83C404                              add esp, 4*1
+    83                                              
+    84                                          ; exit(0)
+    85 00000080 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    86 00000082 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

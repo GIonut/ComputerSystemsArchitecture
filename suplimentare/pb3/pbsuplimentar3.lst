@@ -1,0 +1,65 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ;3) Se da un fisier txt cu continut variabli (fisierul poate contine orice si
+     7                                  ;oricat). Scrieti in program asm care citeste fisierul dat pe bucati a cate
+     8                                  ;10 octeti si il afiseaza pe ecran.
+     9                                  
+    10                                  
+    11                                  
+    12                                  ; declare external functions needed by our program
+    13                                  extern exit, fopen, fclose, fread, printf               ; tell nasm that exit exists even if we won't be defining it
+    14                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+    15                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    16                                  import fopen msvcrt.dll
+    17                                  import fclose msvcrt.dll
+    18                                  import fread msvcrt.dll
+    19                                  import printf msvcrt.dll
+    20                                  ; our data is declared here (the variables needed by our program)
+    21                                  segment data use32 class=data
+    22                                      ; ...
+    23 00000000 7062332E74787400            inpfile db 'pb3.txt', 0
+    24 00000008 7200                        modread db 'r', 0
+    25 0000000A FFFFFFFF                    handle dd -1
+    26 0000000E 2573256300                  format db '%s%c', 0
+    27 00000013 00<rept>                    nr times 10 db 0
+    28                                  ; our code starts here
+    29                                  segment code use32 class=code
+    30                                      start:
+    31                                          ; ...
+    32 00000000 68[08000000]                    push dword modread
+    33 00000005 68[00000000]                    push dword inpfile
+    34 0000000A FF15[00000000]                  call [fopen]
+    35                                          
+    36 00000010 83C408                          add esp, 4*2
+    37                                          
+    38 00000013 A3[0A000000]                    mov [handle], eax
+    39 00000018 83F800                          cmp eax, 0
+    40 0000001B 7431                            je theend
+    41                                          
+    42                                          repeat:
+    43 0000001D FF35[0A000000]                      push dword [handle]
+    44 00000023 6A01                                push dword 1
+    45 00000025 6A0A                                push dword 10
+    46 00000027 68[13000000]                        push dword nr
+    47 0000002C FF15[00000000]                      call [fread]
+    48                                              
+    49 00000032 83F800                              cmp eax, 0
+    50 00000035 7417                                je theend
+    51                                              
+    52 00000037 6A0A                                push dword 10
+    53 00000039 68[13000000]                        push dword nr
+    54 0000003E 68[0E000000]                        push dword format
+    55 00000043 FF15[00000000]                      call [printf]
+    56                                              
+    57 00000049 83C40C                              add esp, 4*3
+    58 0000004C EBCF                            jmp repeat
+    59                                          
+    60                                          theend:
+    61                                          
+    62                                              
+    63                                          ; exit(0)
+    64 0000004E 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    65 00000050 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

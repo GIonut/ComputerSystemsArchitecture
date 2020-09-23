@@ -1,0 +1,53 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ;ex12:
+     7                                  ;Given an array A of doublewords, build two arrays of bytes:  
+     8                                  ; - array B1 contains as elements the lower part of the lower words from A
+     9                                  ; - array B2 contains as elements the higher part of the higher words from A
+    10                                  
+    11                                  ; declare external functions needed by our program
+    12                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+    13                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+    14                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    15                                  
+    16                                  ; our data is declared here (the variables needed by our program)
+    17                                  segment data use32 class=data
+    18                                      ; ...
+    19 00000000 443322111122334433-         A dd 11223344h, 44332211h, 11224433h, 2233h
+    19 00000009 44221133220000     
+    20                                      len equ $-A 
+    21 00000010 00<rept>                    B1 times len/4 db 0
+    22 00000014 00<rept>                    B2 times len/4 db 0
+    23                                  ; our code starts here
+    24                                  segment code use32 class=code
+    25                                      start:
+    26                                          ; ...
+    27 00000000 FC                              cld; df = 0
+    28 00000001 BE[00000000]                    mov esi, A
+    29 00000006 BF[10000000]                    mov edi, B1
+    30 0000000B B904000000                      mov ecx, len/4; we parse the loop len/4 times because len is the length of a string of doublewords 
+    31                                          repeat:
+    32 00000010 66AD                                lodsw; The word starting from the address ESI is loaded in AX; DF=0 then ESI:=ESI+2
+    33 00000012 6625FF00                            and ax, 0000000011111111b; we get the lower part
+    34 00000016 AA                                  stosb; Store AL into the byte from the address EDI, so from B1; DF=0 then EDI:=EDI+1
+    35 00000017 66AD                                lodsw; we skip the higher part of the doubleword; DF=0 then ESI:=ESI+2
+    36 00000019 E2F5                            loop repeat
+    37                                          
+    38 0000001B FC                              cld
+    39 0000001C BE[00000000]                    mov esi, A
+    40 00000021 BF[14000000]                    mov edi, B2
+    41 00000026 B904000000                      mov ecx, len/4
+    42                                          repeat1:
+    43 0000002B 66AD                                lodsw;we skip the lower part of the doubleword; DF=0 then ESI:=ESI+2
+    44 0000002D 66AD                                lodsw;The word starting from the address ESI is loaded in AX; DF=0 then ESI:=ESI+2
+    45 0000002F 662500FF                            and ax, 1111111100000000b; we get the higher part of the doubleword
+    46 00000033 66C1C808                            ror ax, 8; we get in AL the higher part of the higher word of the doubleword
+    47 00000037 AA                                  stosb; Store AL into the byte from the address EDI, so from B1; DF=0 then EDI:=EDI+1
+    48 00000038 E2F1                            loop repeat1
+    49                                          
+    50                                          ; exit(0)
+    51 0000003A 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    52 0000003C FF15[00000000]                  call    [exit]       ; call exit to terminate the program

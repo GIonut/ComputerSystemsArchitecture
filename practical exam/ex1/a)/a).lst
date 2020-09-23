@@ -1,0 +1,111 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit, fopen, fclose, fscanf, printf               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import fopen msvcrt.dll
+    11                                  import fclose msvcrt.dll
+    12                                  import fscanf msvcrt.dll
+    13                                  import printf msvcrt.dll
+    14                                  ; our data is declared here (the variables needed by our program)
+    15                                  segment data use32 class=data
+    16                                      ; ...
+    17 00000000 66696C652E74787400          file_name db 'file.txt', 0
+    18 00000009 7200                        access_mode db 'r', 0
+    19 0000000B FFFFFFFF                    handle dd -1
+    20 0000000F 00000000                    number dd 0
+    21 00000013 256400                      format_number db '%d', 0
+    22 00000016 00000000                    sum dd 0
+    23 0000001A 01000000                    product dd 1
+    24 0000001E 00000000                    max dd 0
+    25 00000022 00                          contor db 0
+    26 00000023 00<rept>                    max_positions times 10 db 0
+    27 0000002D 73756D203D2025640A-         special_format db 'sum = %d' ,10, 13, 'product = %d', 10, 13, 'max = %d', 10, 13, 0
+    27 00000036 0D70726F6475637420-
+    27 0000003F 3D2025640A0D6D6178-
+    27 00000048 203D2025640A0D00   
+    28 00000050 25642000                    format_sequence db '%d ', 0
+    29                                      
+    30                                  ; our code starts here
+    31                                  segment code use32 class=code
+    32                                      start:
+    33                                          ; ...
+    34                                          ; fopen(file_name, access_mode)
+    35 00000000 68[09000000]                    push dword access_mode
+    36 00000005 68[00000000]                    push dword file_name
+    37 0000000A FF15[00000000]                  call [fopen]
+    38 00000010 83C408                          add esp, 4*2
+    39                                          
+    40 00000013 A3[0B000000]                    mov [handle], eax
+    41 00000018 83F800                          cmp eax, 0
+    42 0000001B 0F84B8000000                    je theend
+    43                                          
+    44                                          ;fscanf(file_handle, format, atributes)
+    45                                          repeat:
+    46 00000021 68[0F000000]                    push dword number
+    47 00000026 68[13000000]                    push dword format_number
+    48 0000002B FF35[0B000000]                  push dword [handle]
+    49 00000031 FF15[00000000]                  call [fscanf]
+    50 00000037 83C40C                          add esp, 4*3
+    51                                          
+    52 0000003A 83F8FF                          cmp eax, -1
+    53 0000003D 7455                            je EOF
+    54                                          
+    55 0000003F FE05[22000000]                  inc byte [contor]
+    56 00000045 A1[0F000000]                    mov eax, dword [number]
+    57 0000004A 0105[16000000]                  add dword [sum], eax    ; add the current number to the sum
+    58                                          
+    59 00000050 A1[1A000000]                    mov eax, dword [product]
+    60 00000055 F72D[0F000000]                  imul dword [number]     ; sign multiplication of the product with the current number 
+    61 0000005B A3[1A000000]                    mov dword [product], eax
+    62                                          
+    63 00000060 A1[1E000000]                    mov eax, dword [max]
+    64 00000065 3905[0F000000]                  cmp dword [number], eax
+    65 0000006B 7C25                            jl notMax
+    66 0000006D 3905[0F000000]                      cmp dword [number], eax
+    67 00000073 7508                                jne notSameMax
+    68 00000075 A0[22000000]                            mov al, byte [contor]
+    69 0000007A AA                                      stosb
+    70 0000007B EB15                                    jmp notMax
+    71                                              notSameMax:
+    72 0000007D BF[23000000]                            mov edi, max_positions
+    73 00000082 A0[22000000]                            mov al, byte [contor]
+    74 00000087 AA                                      stosb
+    75 00000088 A1[0F000000]                            mov eax, dword [number]
+    76 0000008D A3[1E000000]                            mov dword [max], eax
+    77                                          notMax:
+    78                                          
+    79 00000092 EB8D                            jmp repeat
+    80                                          
+    81                                          EOF:
+    82                                          
+    83                                          ;printf(format, atributes)/ printf(specila_format, sum, product, max)
+    84 00000094 FF35[1E000000]                  push dword [max]; sand parameters through value
+    85 0000009A FF35[1A000000]                  push dword [product]
+    86 000000A0 FF35[16000000]                  push dword [sum]
+    87 000000A6 68[2D000000]                    push dword special_format; it's over a double word so we transfer it through reference
+    88 000000AB FF15[00000000]                  call [printf]
+    89 000000B1 83C410                          add esp, 4*4
+    90                                          
+    91 000000B4 C6470100                        mov byte [edi+1], 0
+    92 000000B8 BE[23000000]                    mov esi, max_positions
+    93                                          repeat1:
+    94 000000BD AC                                  lodsb
+    95 000000BE 3C00                                cmp al, 0
+    96 000000C0 7417                                je theend
+    97 000000C2 B400                                mov ah, 0
+    98 000000C4 666A00                              push word 0
+    99 000000C7 6650                                push ax
+   100 000000C9 68[50000000]                        push dword format_sequence
+   101 000000CE FF15[00000000]                      call [printf]
+   102 000000D4 83C408                              add esp, 4*2
+   103 000000D7 EBE4                            jmp repeat1
+   104                                          
+   105                                          theend:
+   106                                          ; exit(0)
+   107 000000D9 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+   108 000000DB FF15[00000000]                  call    [exit]       ; call exit to terminate the program

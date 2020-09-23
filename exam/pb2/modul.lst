@@ -1,0 +1,36 @@
+     1                                  bits 32
+     2                                  
+     3                                  global function
+     4                                  
+     5                                  segment code use 32 class=code public
+     6                                      function:
+     7 00000000 8B4C240C                        mov ecx, [esp+12]
+     8 00000004 8B742408                        mov esi, [esp+8]
+     9 00000008 8B7C2404                        mov edi, [esp+4]
+    10                                          
+    11 0000000C C1E902                          shr ecx, 2
+    12                                          .repeat1:
+    13 0000000F 83F900                              cmp ecx, 0
+    14 00000012 741B                                je .endloop1
+    15                                              
+    16 00000014 AD                                  lodsd
+    17 00000015 66BB0000                            mov bx, 0
+    18                                              .repeat2:
+    19 00000019 83F800                                  cmp eax, 0
+    20 0000001C 7408                                    je .outrp
+    21 0000001E B50A                                    mov ch, 10
+    22 00000020 F6F5                                    div ch
+    23 00000022 6601D3                                  add bx, dx
+    24 00000025 98                                      cwde
+    25                                              .outrp:
+    26 00000026 B500                                mov ch, 0
+    27 00000028 6689D8                              mov ax, bx
+    28 0000002B 98                                  cwde
+    29 0000002C AB                                  stosd
+    30 0000002D E2E0                            loop .repeat1
+    31                                          .endloop1:
+    32                                          
+    33 0000002F C20C00                          ret 4*3
+    34                                           
+    35                                              
+    36                                          

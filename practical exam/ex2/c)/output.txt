@@ -1,0 +1,11 @@
+02.	Ue citeste un text din fisier si un character de la tastatura.
+
+a)	Ealculati numarul de aparitii al caracterului citit in textul dat si inlocuiti-l cu Z, scriind reszultatul in alt fisier output.txt
+
+b)	Cfisati top 5 caractere ca frecventa in textul dat, afisand (nrcrt character frecventa).
+
+c)	Eodificati textul folosind corespondenta CDEFâŚ YZAB -> EFGHâŚ  ABCD si afisati condificarea intr-un nou fisier.
+
+d)	Ealculati lungimea fisierului.
+
+e)      Ealculati numarul de cuvinte din fisier.

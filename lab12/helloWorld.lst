@@ -1,0 +1,35 @@
+     1                                  bits 32
+     2                                  global start
+     3                                  
+     4                                  import printf msvcrt.dll
+     5                                  import exit msvcrt.dll
+     6                                  extern printf, exit
+     7                                  
+     8                                  
+     9                                  segment data use32
+    10 00000000 3233340000000000        	x db '234',0,0,0,0,0
+    11 00000008 25730A0D00                  format_string db '%s', 10, 13, 0
+    12 0000000D 00000000                    saveEcx dd 0
+    13                                  segment code use32 public code
+    14                                  start:
+    15                                      ;pop x
+    16 00000000 B9FFFFFFFF                  mov ecx, -1
+    17 00000005 8D35[FFFFFFFF]              lea esi, [x - 1]
+    18                                      count:
+    19 0000000B 41                              inc ecx
+    20 0000000C 46                              inc esi
+    21 0000000D 803E00                          cmp byte [esi], 0
+    22 00000010 75F9                        jne count
+    23 00000012 BE[00000000]            	mov esi, x
+    24 00000017 8DB9[00000000]              lea edi, [x+1*ecx]
+    25                                      repeat:
+    26 0000001D 890D[0D000000]                  mov [saveEcx], ecx
+    27 00000023 A4                              movsb
+    28 00000024 56                              push dword esi
+    29 00000025 68[08000000]                    push format_string
+    30 0000002A FF15[00000000]                  call [printf]
+    31 00000030 8B0D[0D000000]                  mov ecx, [saveEcx]
+    32 00000036 E2E5                        loop repeat
+    33                                      
+    34 00000038 6A00                    	push 0
+    35 0000003A FF15[00000000]          	call [exit]

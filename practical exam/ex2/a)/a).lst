@@ -1,0 +1,109 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit, fopen, fclose, fread, scanf, fwrite               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import fopen msvcrt.dll
+    11                                  import fclose msvcrt.dll
+    12                                  import fread msvcrt.dll
+    13                                  import fwrite msvcrt.dll
+    14                                  import scanf msvcrt.dll
+    15                                  ; our data is declared here (the variables needed by our program)
+    16                                  segment data use32 class=data
+    17                                      ; ...
+    18 00000000 696E7075742E747874-         input_file db 'input.txt', 0
+    18 00000009 00                 
+    19 0000000A 6F75747075742E7478-         output_file db 'output.txt', 0
+    19 00000013 7400               
+    20 00000015 7200                        mode_read db 'r', 0
+    21 00000017 7700                        mode_write db 'w', 0
+    22 00000019 256300                      format_character db '%c', 0
+    23 0000001C FFFFFFFF                    handleI dd -1
+    24 00000020 FFFFFFFF                    handleO dd -1
+    25 00000024 00                          character db 0
+    26 00000025 00                          char db 0
+    27                                  ; our code starts here
+    28                                  segment code use32 class=code
+    29                                      start:
+    30                                          ; ...
+    31                                          ;fopen(file_name, access_mode)
+    32 00000000 68[15000000]                    push dword mode_read
+    33 00000005 68[00000000]                    push dword input_file
+    34 0000000A FF15[00000000]                  call [fopen]
+    35                                          
+    36 00000010 83C408                          add esp, 4*2
+    37                                          
+    38 00000013 A3[1C000000]                    mov dword [handleI], eax
+    39 00000018 83F800                          cmp eax, 0
+    40 0000001B 0F848C000000                    je theend
+    41                                          
+    42 00000021 68[17000000]                    push dword mode_write
+    43 00000026 68[0A000000]                    push dword output_file
+    44 0000002B FF15[00000000]                  call [fopen]
+    45 00000031 83C408                          add esp, 4*2
+    46                                          
+    47 00000034 A3[20000000]                    mov dword [handleO], eax
+    48 00000039 83F800                          cmp eax, 0
+    49 0000003C 746F                            je theend
+    50                                          
+    51                                          ;int scanf(const char * format, adresa_variabila_1, ...);
+    52 0000003E 68[24000000]                    push dword character
+    53 00000043 68[19000000]                    push dword format_character
+    54 00000048 FF15[00000000]                  call [scanf]
+    55                                          
+    56 0000004E 83C408                          add esp, 4*2
+    57                                          
+    58                                          repeat:
+    59                                          ;fread(void * buffer, int size, int count, FILE * stream)
+    60 00000051 FF35[1C000000]                      push dword [handleI]
+    61 00000057 6A01                                push dword 1
+    62 00000059 6A01                                push dword 1
+    63 0000005B 68[25000000]                        push dword char
+    64 00000060 FF15[00000000]                      call [fread]
+    65 00000066 83C410                              add esp, 4*4
+    66                                          
+    67 00000069 83F801                              cmp eax, 1
+    68 0000006C 7C3F                                jl EOF
+    69                                          
+    70 0000006E A0[24000000]                        mov al, byte [character]
+    71 00000073 3A05[25000000]                      cmp al, byte [char]
+    72 00000079 7507                                jne continue
+    73                                                  
+    74 0000007B C605[25000000]78                       mov byte [char], 'x'
+    75                                                 
+    76                                              continue:
+    77 00000082 2C20                                sub al, 32
+    78 00000084 3A05[25000000]                      cmp al, byte [char]
+    79 0000008A 7507                                jne continue1
+    80                                                  
+    81 0000008C C605[25000000]78                       mov byte [char], 'x'
+    82                                                 
+    83                                              continue1:
+    84                                              ;int fwrite(void buffer, int size, int count, FILE stream );
+    85 00000093 FF35[20000000]                      push dword [handleO]
+    86 00000099 6A01                                push dword 1
+    87 0000009B 6A01                                push dword 1
+    88 0000009D 68[25000000]                        push dword char
+    89 000000A2 FF15[00000000]                      call [fwrite]
+    90                                              
+    91 000000A8 83C410                              add esp, 4*4
+    92                                     
+    93 000000AB EBA4                            jmp repeat
+    94                                          EOF:
+    95                                          
+    96                                          theend:
+    97                                          ;fclose(handle)
+    98 000000AD FF35[1C000000]                  push dword [handleI]
+    99 000000B3 FF15[00000000]                  call [fclose]
+   100 000000B9 83C404                          add esp, 4
+   101                                          
+   102 000000BC FF35[20000000]                  push dword [handleO]
+   103 000000C2 FF15[00000000]                  call [fclose]
+   104 000000C8 83C404                          add esp, 4
+   105                                          ; exit(0)
+   106 000000CB 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+   107 000000CD FF15[00000000]                  call    [exit]       ; call exit to terminate the program

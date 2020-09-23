@@ -1,0 +1,91 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit, fopen, fclose, fscanf, printf               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import fopen msvcrt.dll
+    11                                  import fclose msvcrt.dll
+    12                                  import fscanf msvcrt.dll
+    13                                  import printf msvcrt.dll
+    14                                  
+    15                                  ; our data is declared here (the variables needed by our program)
+    16                                  segment data use32 class=data
+    17                                      ; ...
+    18 00000000 66696C652E74787400          file_name db 'file.txt', 0
+    19 00000009 7200                        access_mode db 'r', 0
+    20 0000000B FFFFFFFF                    handle dd -1
+    21 0000000F 256400                      format db '%d', 0
+    22 00000012 25642000                    format_d db '%d ', 0
+    23 00000016 00000000                    number dd 0
+    24 0000001A 01                          d db 1
+    25 0000001B 01                          count db 1
+    26                                  ; our code starts here
+    27                                  segment code use32 class=code
+    28                                      start:
+    29                                          ; ...
+    30                                          ;fopen(file_name, access_mode)
+    31 00000000 68[09000000]                    push dword access_mode
+    32 00000005 68[00000000]                    push dword file_name
+    33 0000000A FF15[00000000]                  call [fopen]
+    34                                          
+    35 00000010 83C408                          add esp, 4*2
+    36                                          
+    37 00000013 A3[0B000000]                    mov dword [handle], eax
+    38 00000018 83F800                          cmp eax, 0
+    39 0000001B 7478                            je theend
+    40                                          
+    41                                          repeat:
+    42                                          ;fscanf(handle, format, atributes)
+    43 0000001D 68[16000000]                    push dword number
+    44 00000022 68[0F000000]                    push dword format
+    45 00000027 FF35[0B000000]                  push dword [handle]
+    46 0000002D FF15[00000000]                  call [fscanf]
+    47 00000033 83C40C                          add esp, 4*3
+    48                                          
+    49 00000036 83F8FF                          cmp eax, -1
+    50 00000039 745A                            je EOF
+    51                                          
+    52 0000003B C605[1B000000]01                mov byte [count], 1 ; start counting the divisors
+    53 00000042 C605[1A000000]02                mov byte [d], 2; start dividing by 2
+    54                                          
+    55                                          
+    56 00000049 668B1D[16000000]                mov bx, word [number]
+    57 00000050 66D1EB                          shr bx, 1
+    58                                          
+    59                                          repeat1:
+    60 00000053 66A1[16000000]                      mov ax, word [number] ; prepare the division
+    61 00000059 668B15[18000000]                    mov dx, word [number+2]
+    62                                              
+    63 00000060 381D[1A000000]                      cmp byte [d], bl ; if d is greater than number/2 we stop searching divisors
+    64 00000066 7FB5                                jg repeat
+    65                                              
+    66 00000068 F635[1A000000]                      div byte [d]; divide the number by d
+    67                                              
+    68 0000006E 80FC00                              cmp ah, 0; if the rest is 0 than d is a divisor
+    69 00000071 7518                                jne no_d
+    70                                                  ;if d is a divisor then print it
+    71 00000073 A0[1A000000]                            mov al, byte [d]
+    72 00000078 6698                                    cbw
+    73 0000007A 6699                                    cwd
+    74 0000007C 50                                      push eax
+    75 0000007D 68[12000000]                            push format_d
+    76 00000082 FF15[00000000]                          call [printf]
+    77 00000088 83C408                                  add esp, 4*2
+    78                                              no_d:
+    79 0000008B FE05[1A000000]                      inc byte[d]
+    80 00000091 EBC0                                jmp repeat1
+    81                                              
+    82 00000093 EB88                            jmp repeat
+    83                                          
+    84                                          EOF:
+    85                                          
+    86                                          theend:
+    87 00000095 FF35[0B000000]                  push dword [handle]
+    88 0000009B FF15[00000000]                  call [fclose]
+    89                                          ; exit(0)
+    90 000000A1 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    91 000000A3 FF15[00000000]                  call    [exit]       ; call exit to terminate the program
